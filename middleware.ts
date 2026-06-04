@@ -1,12 +1,65 @@
 import { authkit } from "@workos-inc/authkit-nextjs";
 import { NextRequest, NextResponse, NextFetchEvent } from "next/server";
-import { isRateLimitError } from "@/lib/api/response";
-import {
-  REFERRAL_COOKIE_CREATED_AT_NAME,
-  REFERRAL_COOKIE_NAME,
-  getReferralRewardConfig,
-  isValidReferralCode,
-} from "@/lib/referrals/config";
+
+const REFERRAL_COOKIE_NAME = "hackerai_ref";
+const REFERRAL_COOKIE_CREATED_AT_NAME = "hackerai_ref_at";
+const REFERRAL_CODE_PATTERN = /^[a-zA-Z0-9_-]{6,64}$/;
+
+function extractErrorMessage(err: unknown): string {
+  if (typeof err === "string") return err;
+  if (err && typeof err === "object" && "message" in err) {
+    return (err as any).message ?? "";
+  }
+  return "";
+}
+
+function isRateLimitError(err: unknown): boolean {
+  const normalized = extractErrorMessage(err).toLowerCase();
+  const statusCode = (err as any)?.status;
+  const causeStatusCode = (err as any)?.cause?.status;
+  return (
+    statusCode === 429 ||
+    causeStatusCode === 429 ||
+    normalized.includes("rate limit exceeded") ||
+    normalized.includes("too many requests")
+  );
+}
+
+function isValidReferralCode(code: string | null | undefined): boolean {
+  return typeof code === "string" && REFERRAL_CODE_PATTERN.test(code);
+}
+
+function getReferralRewardConfig() {
+  const parsePositiveNumber = (
+    raw: string | undefined,
+    fallback: number,
+  ): number => {
+    if (!raw) return fallback;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+  };
+  return {
+    enabled: process.env.REFERRAL_PROGRAM_ENABLED !== "false",
+    referrerRewardDollars: parsePositiveNumber(
+      process.env.REFERRAL_REFERRER_REWARD_DOLLARS,
+      10,
+    ),
+    referredSignupBonusUnits: parsePositiveNumber(
+      process.env.REFERRAL_REFERRED_SIGNUP_BONUS_UNITS,
+      10,
+    ),
+    attributionMaxUserAgeDays: parsePositiveNumber(
+      process.env.REFERRAL_ATTRIBUTION_MAX_USER_AGE_DAYS,
+      7,
+    ),
+    cookieMaxAgeSeconds: Math.round(
+      parsePositiveNumber(process.env.REFERRAL_COOKIE_MAX_AGE_DAYS, 30) *
+        24 *
+        60 *
+        60,
+    ),
+  };
+}
 
 const UNAUTHENTICATED_PATHS = new Set([
   "/",
