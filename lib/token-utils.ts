@@ -64,10 +64,9 @@ export const MAX_TOKENS_PAID = 200000;
 export const FILE_TOKEN_PERCENT = 0.5;
 
 export const getMaxTokensForSubscription = (
-  subscription?: SubscriptionTier,
+  _subscription?: SubscriptionTier,
   _opts?: { mode?: import("@/types").ChatMode },
 ): number => {
-  if (subscription === "free") return MAX_TOKENS_FREE;
   return MAX_TOKENS_PAID;
 };
 

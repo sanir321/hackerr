@@ -6,12 +6,9 @@ import { ChatInput } from "../components/ChatInput";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { Chat } from "../components/chat";
-import PricingDialog from "../components/PricingDialog";
-import TeamPricingDialog from "../components/TeamPricingDialog";
 import { TeamWelcomeDialog } from "../components/TeamDialogs";
 import MigratePentestgptDialog from "../components/MigratePentestgptDialog";
 import { ExtraUsagePurchaseToast } from "../components/extra-usage";
-import { usePricingDialog } from "../hooks/usePricingDialog";
 import { useGlobalState } from "../contexts/GlobalState";
 import { usePentestgptMigration } from "../hooks/usePentestgptMigration";
 import { navigateToAuth } from "../hooks/useTauri";
@@ -118,15 +115,11 @@ const AuthenticatedContent = () => {
 // Main page component with Convex authentication
 export default function Page() {
   const {
-    subscription,
-    teamPricingDialogOpen,
-    setTeamPricingDialogOpen,
     teamWelcomeDialogOpen,
     setTeamWelcomeDialogOpen,
     migrateFromPentestgptDialogOpen,
     setMigrateFromPentestgptDialogOpen,
   } = useGlobalState();
-  const { showPricing, handleClosePricing } = usePricingDialog(subscription);
 
   const { isMigrating, migrate } = usePentestgptMigration();
   const searchParams =
@@ -159,13 +152,6 @@ export default function Page() {
       <Authenticated>
         <AuthenticatedContent />
         <ExtraUsagePurchaseToast />
-        <PricingDialog isOpen={showPricing} onClose={handleClosePricing} />
-        <TeamPricingDialog
-          isOpen={teamPricingDialogOpen}
-          onClose={() => setTeamPricingDialogOpen(false)}
-          initialSeats={initialSeats}
-          initialPlan={initialPlan}
-        />
         <TeamWelcomeDialog
           open={teamWelcomeDialogOpen}
           onOpenChange={setTeamWelcomeDialogOpen}

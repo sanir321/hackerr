@@ -5,14 +5,12 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
 import {
   PanelLeft,
-  Sparkle,
   SquarePen,
   HatGlasses,
   Split,
   Share,
 } from "lucide-react";
 import { useGlobalState } from "../contexts/GlobalState";
-import { redirectToPricing } from "../hooks/usePricingDialog";
 import { useRouter } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -58,8 +56,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   const { user, loading } = useAuth();
   const {
     toggleChatSidebar,
-    subscription,
-    isCheckingProPlan,
     initializeNewChat,
     closeSidebar,
     setChatSidebarOpen,
@@ -78,11 +74,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
 
   // Check if this is a branched chat
   const isBranchedChat = !!chatData?.branched_from_chat_id;
-
-  const handleUpgradeClick = () => {
-    // Navigate to pricing page
-    redirectToPricing();
-  };
 
   const handleNewChat = () => {
     // Close computer sidebar when creating new chat
@@ -107,21 +98,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
           {/* Desktop header */}
           <div className="py-[10px] flex gap-10 items-center justify-between max-md:hidden">
             <div className="flex items-center gap-2">
-              {/* Removed sidebar toggle for desktop - handled by collapsed sidebar logo */}
-              {/* Show upgrade button for logged-in users without pro plan */}
-              {!loading &&
-                user &&
-                !isCheckingProPlan &&
-                subscription === "free" && (
-                  <Button
-                    onClick={handleUpgradeClick}
-                    className="flex items-center gap-1 rounded-full py-2 ps-2.5 pe-3 text-sm font-medium bg-premium-bg text-premium-text hover:bg-premium-hover border-0 transition-all duration-200"
-                    size="default"
-                  >
-                    <Sparkle className="mr-2 h-4 w-4 fill-current" />
-                    Upgrade plan
-                  </Button>
-                )}
             </div>
             <div className="flex flex-1 gap-2 justify-between items-center">
               <div className="flex gap-[40px]"></div>
@@ -193,20 +169,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                   <PanelLeft className="size-5" />
                 </Button>
               )}
-              {/* Show upgrade button for logged-in users without pro plan */}
-              {!loading &&
-                user &&
-                !isCheckingProPlan &&
-                subscription === "free" && (
-                  <Button
-                    onClick={handleUpgradeClick}
-                    className="flex items-center gap-1 rounded-full py-2 ps-2.5 pe-3 text-sm font-medium bg-premium-bg text-premium-text hover:bg-premium-hover border-0 transition-all duration-200"
-                    size="sm"
-                  >
-                    <Sparkle className="mr-1 h-3 w-3 fill-current" />
-                    Upgrade plan
-                  </Button>
-                )}
             </div>
             <div className="flex items-center gap-2">
               {/* Temporary Chat Toggle - Mobile */}

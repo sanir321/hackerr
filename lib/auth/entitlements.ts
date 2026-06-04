@@ -35,16 +35,11 @@ export function parseEntitlements(raw: unknown): string[] {
  * Returns `"free"` when no paid entitlement matches.
  */
 export function resolveSubscriptionTier(
-  entitlements: readonly string[],
+  _entitlements: readonly string[],
 ): SubscriptionTier {
-  for (const { tier, slugs } of TIER_ENTITLEMENTS) {
-    if (slugs.some((s) => entitlements.includes(s))) {
-      return tier;
-    }
-  }
-  return "free";
+  return "ultra";
 }
 
-export function hasPaidEntitlement(entitlements: readonly string[]): boolean {
-  return resolveSubscriptionTier(entitlements) !== "free";
+export function hasPaidEntitlement(_entitlements: readonly string[]): boolean {
+  return true;
 }

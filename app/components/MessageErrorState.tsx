@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { MemoizedMarkdown } from "./MemoizedMarkdown";
 import { ChatSDKError, isNetworkStreamError } from "@/lib/errors";
-import { useGlobalState } from "@/app/contexts/GlobalState";
-import { redirectToPricing } from "@/app/hooks/usePricingDialog";
 import { openSettingsDialog } from "@/lib/utils/settings-dialog";
 
 interface MessageErrorStateProps {
@@ -31,7 +29,6 @@ export const MessageErrorState = ({
   onRetry,
   onReconnect,
 }: MessageErrorStateProps) => {
-  const { subscription } = useGlobalState();
   const isRateLimitError =
     error instanceof ChatSDKError && error.type === "rate_limit";
   const canReconnect = !!onReconnect && isNetworkStreamError(error);
@@ -62,11 +59,6 @@ export const MessageErrorState = ({
     return error.message || "An error occurred.";
   })();
 
-  const isPaidUser = subscription !== "free";
-  const canUpgrade =
-    subscription === "free" ||
-    subscription === "pro" ||
-    subscription === "pro-plus";
   const isSuspensionError = metadata?.suspensionCategory !== undefined;
 
   return (
@@ -90,11 +82,8 @@ export const MessageErrorState = ({
               variant="destructive"
               size="sm"
               onClick={onRetry}
-              disabled={timeRemaining > 0 && !isPaidUser}
             >
-              {timeRemaining > 0 && !isPaidUser
-                ? `Try again in ${formatCountdown(timeRemaining)}`
-                : "Try Again"}
+              Try Again
             </Button>
             <Button
               variant="outline"
@@ -103,20 +92,6 @@ export const MessageErrorState = ({
             >
               View Usage
             </Button>
-            {isPaidUser && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => openSettingsDialog("Extra Usage")}
-              >
-                Add Credits
-              </Button>
-            )}
-            {canUpgrade && (
-              <Button variant="default" size="sm" onClick={redirectToPricing}>
-                Upgrade Plan
-              </Button>
-            )}
           </>
         ) : (
           <>

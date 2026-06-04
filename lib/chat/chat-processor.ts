@@ -24,10 +24,9 @@ import {
  */
 export const getMaxStepsForUser = (
   mode: ChatMode,
-  subscription: SubscriptionTier,
+  _subscription: SubscriptionTier,
 ): number => {
-  if (isAgentMode(mode)) return 100;
-  return subscription === "free" ? 15 : 100;
+  return 100;
 };
 
 /**
@@ -50,26 +49,19 @@ export function selectModel(
   // paid users only when no image/PDF is attached — DeepSeek is text-only,
   // so we promote to Gemini 3 Flash when vision/document parts are present.
   const askUsesDeepSeek =
-    !isAgent && (subscription === "free" || !hasImageOrPdf);
+    !isAgent && (process.env.SELF_HOSTED === "true" || !hasImageOrPdf);
 
   const autoModel: ModelName = isAgent
-    ? subscription === "free"
-      ? "agent-model-free"
-      : "agent-model"
-    : askUsesDeepSeek
-      ? "ask-model-free"
-      : "ask-model";
+    ? "agent-model-free"
+    : "ask-model-free";
 
-  // Free users always route through the auto router; paid users may pick a
-  // tier explicitly. The tier id is mode-aware via resolveTierToProviderKey.
-  if (!selectedModel || selectedModel === "auto" || subscription === "free") {
+  if (!selectedModel || selectedModel === "auto") {
     return autoModel;
   }
 
-  // Paid ASK Standard mirrors the auto-route split, but uses the explicit
-  // `model-deepseek-v4-flash` / `model-gemini-3-flash` keys so any UI that
-  // reads `getModelDisplayName` shows the picked model rather than the
-  // auto-router label.
+  // ASK Standard uses the explicit `model-deepseek-v4-flash` /
+  // `model-gemini-3-flash` keys so any UI that reads `getModelDisplayName`
+  // shows the picked model rather than the auto-router label.
   if (selectedModel === "hackerai-standard" && !isAgent) {
     return askUsesDeepSeek ? "model-deepseek-v4-flash" : "model-gemini-3-flash";
   }
@@ -624,7 +616,7 @@ export async function processChatMessages({
   messages,
   mode,
   userId,
-  subscription,
+  subscription: _subscription,
   uploadBasePath,
   modelOverride,
   allowLocalDesktopFiles = false,
@@ -654,7 +646,7 @@ export async function processChatMessages({
       mode,
       userId,
       uploadBasePath,
-      subscription,
+      "ultra",
       allowLocalDesktopFiles,
     );
 
@@ -702,7 +694,7 @@ export async function processChatMessages({
   // Select the appropriate model early so we can make model-aware decisions below
   const selectedModel = selectModel(
     mode,
-    subscription,
+    "ultra",
     modelOverride,
     hasImageOrPdfAttachment(messagesWithoutDuplicates),
   );
@@ -722,7 +714,7 @@ export async function processChatMessages({
   // Check moderation for the last user message
   const moderationResult = await getModerationResult(
     cleanedMessages,
-    subscription !== "free",
+    true,
   );
 
   // If moderation allows, add authorization message

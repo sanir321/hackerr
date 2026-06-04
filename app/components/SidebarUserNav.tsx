@@ -6,22 +6,15 @@ import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
   LogOut,
-  Sparkle,
   LifeBuoy,
   ChevronRight,
-  ChevronDown,
   Settings,
   CircleUserRound,
-  Gauge,
   Download,
-  ExternalLink,
-  RefreshCw,
   Gift,
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useGlobalState } from "@/app/contexts/GlobalState";
-import { redirectToPricing } from "../hooks/usePricingDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useIsStandalone } from "@/hooks/use-is-standalone";
 import {
@@ -33,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { clientLogout } from "@/lib/utils/logout";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -40,7 +34,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { clientLogout } from "@/lib/utils/logout";
 import { openSettingsDialog } from "@/lib/utils/settings-dialog";
 import { ReferralRewardDialog } from "./ReferralRewardDialog";
 
@@ -155,129 +148,15 @@ const XIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-// Upgrade banner component
-const UpgradeBanner = ({ isCollapsed }: { isCollapsed: boolean }) => {
-  const { isCheckingProPlan, subscription } = useGlobalState();
-  const isProUser = subscription !== "free";
 
-  // Don't show for pro users or while checking
-  if (isCheckingProPlan || isProUser) {
-    return null;
-  }
-
-  const handleUpgrade = () => {
-    redirectToPricing();
-  };
-
-  return (
-    <div className="relative">
-      {!isCollapsed && (
-        <div className="relative rounded-t-2xl bg-premium-bg backdrop-blur-sm transition-all duration-200">
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={handleUpgrade}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handleUpgrade();
-              }
-            }}
-            className="group relative z-10 flex w-full items-center rounded-t-2xl py-2.5 px-4 text-xs border border-sidebar-border hover:bg-premium-hover transition-all duration-150 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:outline-none cursor-pointer"
-            aria-label="Upgrade your plan"
-          >
-            <span className="flex items-center gap-2.5">
-              <Sparkle className="h-4 w-4 text-premium-text fill-current" />
-              <span className="text-xs font-medium text-premium-text">
-                Upgrade your plan
-              </span>
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const SidebarUserNav = ({ isCollapsed = false }: { isCollapsed?: boolean }) => {
   const { user } = useAuth();
-  const { isCheckingProPlan, subscription } = useGlobalState();
-  const [rateLimitsExpanded, setRateLimitsExpanded] = useState(false);
-  const [referralDialogOpen, setReferralDialogOpen] = useState(false);
-  const [tokenUsage, setTokenUsage] = useState<{
-    monthly: {
-      remaining: number;
-      limit: number;
-      used: number;
-      usagePercentage: number;
-      resetTime: string | null;
-    };
-    monthlyBudgetUsd: number;
-  } | null>(null);
-  const [isLoadingUsage, setIsLoadingUsage] = useState(false);
-  const [usageFetchFailed, setUsageFetchFailed] = useState(false);
   const isMobile = useIsMobile();
   const isStandalone = useIsStandalone();
-  const isPaidUser = subscription !== "free";
-
-  const getAgentRateLimitStatus = useAction(
-    api.rateLimitStatus.getAgentRateLimitStatus,
-  );
-
-  const extraUsageSettings = useQuery(api.extraUsage.getExtraUsageSettings);
-  const userCustomization = useQuery(
-    api.userCustomization.getUserCustomization,
-  );
-  const extraUsageEnabled = userCustomization?.extra_usage_enabled ?? false;
-  const extraUsageBalanceDollars = extraUsageSettings?.balanceDollars ?? 0;
-  const extraUsageMonthlySpentDollars =
-    extraUsageSettings?.monthlySpentDollars ?? 0;
-  const extraUsageMonthlyCapDollars = extraUsageSettings?.monthlyCapDollars;
-  const extraUsageMonthlyLimitLabel =
-    extraUsageMonthlyCapDollars != null
-      ? `$${extraUsageMonthlyCapDollars.toFixed(2)} limit`
-      : "No limit";
-
-  const fetchTokenUsage = useCallback(async () => {
-    if (!isPaidUser) return;
-    setIsLoadingUsage(true);
-    try {
-      const status = await getAgentRateLimitStatus({ subscription });
-      setTokenUsage(status);
-      setUsageFetchFailed(false);
-    } catch {
-      setUsageFetchFailed(true);
-    } finally {
-      setIsLoadingUsage(false);
-    }
-  }, [subscription, isPaidUser, getAgentRateLimitStatus]);
-
-  // Reset error state when subscription changes so it can retry
-  useEffect(() => {
-    setUsageFetchFailed(false);
-  }, [subscription]);
-
-  useEffect(() => {
-    if (
-      rateLimitsExpanded &&
-      !tokenUsage &&
-      !isLoadingUsage &&
-      !usageFetchFailed
-    ) {
-      fetchTokenUsage();
-    }
-  }, [
-    rateLimitsExpanded,
-    tokenUsage,
-    isLoadingUsage,
-    usageFetchFailed,
-    fetchTokenUsage,
-  ]);
+  const [referralDialogOpen, setReferralDialogOpen] = useState(false);
 
   if (!user) return null;
-
-  // Determine if user has pro subscription
-  const isProUser = subscription !== "free";
 
   const handleLogOut = () => {
     clientLogout();
@@ -345,40 +224,10 @@ const SidebarUserNav = ({ isCollapsed = false }: { isCollapsed?: boolean }) => {
         onOpenChange={setReferralDialogOpen}
       />
 
-      {/* Referral card for paid users */}
-      {isPaidUser && !isCheckingProPlan && (
-        <ReferralSidebarCard
-          isCollapsed={isCollapsed}
-          onOpen={() => setReferralDialogOpen(true)}
-        />
-      )}
-
-      {/* Upgrade banner above user nav */}
-      <UpgradeBanner isCollapsed={isCollapsed} />
-
-      {/* Upgrade button for collapsed state */}
-      {isCollapsed && !isCheckingProPlan && !isProUser && (
-        <div className="mb-1">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  data-testid="upgrade-button-collapsed"
-                  variant="secondary"
-                  size="sm"
-                  className="w-full h-8 px-2 bg-premium-bg text-premium-text hover:bg-premium-hover border-0"
-                  onClick={redirectToPricing}
-                >
-                  <Sparkle className="h-4 w-4 fill-current" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p>Upgrade Plan</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      )}
+      <ReferralSidebarCard
+        isCollapsed={isCollapsed}
+        onOpen={() => setReferralDialogOpen(true)}
+      />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -425,20 +274,6 @@ const SidebarUserNav = ({ isCollapsed = false }: { isCollapsed?: boolean }) => {
                 <div className="text-sm font-medium text-sidebar-foreground truncate">
                   {getDisplayName()}
                 </div>
-                <div
-                  data-testid="subscription-badge"
-                  className="text-xs text-sidebar-accent-foreground truncate"
-                >
-                  {subscription === "ultra"
-                    ? "Ultra"
-                    : subscription === "team"
-                      ? "Team"
-                      : subscription === "pro-plus"
-                        ? "Pro+"
-                        : subscription === "pro"
-                          ? "Pro"
-                          : "Free"}
-                </div>
               </div>
             </button>
           )}
@@ -464,116 +299,14 @@ const SidebarUserNav = ({ isCollapsed = false }: { isCollapsed?: boolean }) => {
 
           <DropdownMenuSeparator />
 
-          {(subscription === "pro" || subscription === "pro-plus") && (
-            <DropdownMenuItem
-              data-testid="upgrade-menu-item"
-              onClick={redirectToPricing}
-              className="py-1.5"
-            >
-              <Sparkle className="mr-2 h-4 w-4 text-foreground" />
-              <span>Upgrade Plan</span>
-            </DropdownMenuItem>
-          )}
-
-          {isPaidUser && (
-            <div>
-              <DropdownMenuItem
-                data-testid="referral-menu-item"
-                onSelect={() => setReferralDialogOpen(true)}
-                className="py-1.5"
-              >
-                <Gift className="mr-2 h-4 w-4 text-foreground" />
-                <span>Refer a friend</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  setRateLimitsExpanded(!rateLimitsExpanded);
-                }}
-                className="py-1.5"
-              >
-                <Gauge className="mr-2 h-4 w-4 text-foreground" />
-                <span className="flex-1">Usage</span>
-                {rateLimitsExpanded ? (
-                  <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
-                )}
-              </DropdownMenuItem>
-              {rateLimitsExpanded && (
-                <div className="px-3 pb-2 space-y-0.5">
-                  {isLoadingUsage ? (
-                    <div className="flex items-center gap-2 py-1.5 text-sm text-muted-foreground">
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                      <span>Loading...</span>
-                    </div>
-                  ) : tokenUsage ? (
-                    <>
-                      <div className="flex items-center justify-between py-1.5 text-sm">
-                        <span className="text-muted-foreground">Monthly</span>
-                        <div className="flex items-center gap-3 tabular-nums text-muted-foreground">
-                          <span>
-                            {tokenUsage.monthly.usagePercentage}% used
-                          </span>
-                          {tokenUsage.monthly.resetTime && (
-                            <span>
-                              {new Date(
-                                tokenUsage.monthly.resetTime,
-                              ).toLocaleDateString(undefined, {
-                                month: "short",
-                                day: "numeric",
-                              })}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {extraUsageEnabled && (
-                        <>
-                          <div className="flex items-center justify-between py-1.5 text-sm">
-                            <span className="text-muted-foreground">
-                              Extra balance
-                            </span>
-                            <span className="min-w-0 text-right tabular-nums text-muted-foreground">
-                              ${extraUsageBalanceDollars.toFixed(2)} available
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between py-1.5 text-sm">
-                            <span className="text-muted-foreground">
-                              This month
-                            </span>
-                            <div className="ml-3 flex min-w-0 flex-wrap items-center justify-end gap-x-1.5 gap-y-0.5 text-right tabular-nums text-muted-foreground">
-                              <span>
-                                ${extraUsageMonthlySpentDollars.toFixed(2)}{" "}
-                                spent
-                              </span>
-                              <span className="text-muted-foreground/60">
-                                /
-                              </span>
-                              <span>{extraUsageMonthlyLimitLabel}</span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </>
-                  ) : (
-                    <div className="py-1.5 text-sm text-muted-foreground">
-                      Unable to load usage
-                    </div>
-                  )}
-                  <button
-                    onClick={() => openSettingsDialog("Extra Usage")}
-                    className="-mx-3 px-3 w-[calc(100%+1.5rem)] flex items-center gap-2.5 py-1.5 rounded-md text-left text-sm hover:bg-muted transition-colors"
-                    aria-label="Open extra usage settings"
-                    tabIndex={0}
-                  >
-                    <span className="flex-1">Extra usage</span>
-                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          <DropdownMenuItem
+            data-testid="referral-menu-item"
+            onSelect={() => setReferralDialogOpen(true)}
+            className="py-1.5"
+          >
+            <Gift className="mr-2 h-4 w-4 text-foreground" />
+            <span>Refer a friend</span>
+          </DropdownMenuItem>
 
           <DropdownMenuItem
             data-testid="settings-button"

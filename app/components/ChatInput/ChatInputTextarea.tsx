@@ -97,9 +97,8 @@ export function ChatInputTextarea({
       });
       if (tokenCount > maxTokens) {
         e.preventDefault();
-        const planText = subscription !== "free" ? "" : " (Free plan limit)";
         toast.error("Content is too long to paste", {
-          description: `The content you're trying to paste is too large (${tokenCount.toLocaleString()} tokens). Please copy a smaller amount${planText}.`,
+          description: `The content you're trying to paste is too large (${tokenCount.toLocaleString()} tokens). Please copy a smaller amount.`,
         });
         return;
       }

@@ -30,13 +30,12 @@ import type { UploadedFileState } from "@/types/file";
 import type { FileMessagePart } from "@/types/file";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSandboxPreference } from "@/app/hooks/useSandboxPreference";
-import { isTauriEnvironment } from "@/app/hooks/useTauri";
-import { resolveSubscriptionTier } from "@/lib/auth/entitlements";
+
 import { chatSidebarStorage } from "@/lib/utils/sidebar-storage";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import type { SubscriptionTier } from "@/types";
+
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import {
@@ -93,9 +92,8 @@ interface GlobalStateType {
   isTodoPanelExpanded: boolean;
   setIsTodoPanelExpanded: (expanded: boolean) => void;
 
-  // Subscription state
+  // Subscription state (always "ultra" for self-hosted)
   subscription: SubscriptionTier;
-  isCheckingProPlan: boolean;
 
   // Rate limit warning dismissal state
   hasUserDismissedRateLimitWarning: boolean;
@@ -293,14 +291,10 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
     },
     [],
   );
-  const [subscription, setSubscription] = useState<SubscriptionTier>("free");
-  const setSubscriptionWithNormalize = useCallback((tier: SubscriptionTier) => {
-    setSubscription(tier);
-  }, []);
-  const [isCheckingProPlan, setIsCheckingProPlan] = useState(false);
-  const chatResetRef = useRef<(() => void) | null>(null);
-  const desktopEntitlementRefreshUserRef = useRef<string | null>(null);
+  const [subscription] = useState<SubscriptionTier>("ultra");
 
+
+  const chatResetRef = useRef<(() => void) | null>(null);
   // Rate limit warning dismissal state (persists across chat switches)
   const [
     hasUserDismissedRateLimitWarning,
@@ -408,129 +402,7 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
     cleanupExpiredDrafts();
   }, []); // Empty dependency array = runs once on mount
 
-  // Derive subscription tier from current token entitlements
-  // When user is still loading, set subscription without normalizing chatMode (avoids resetting mode before auth resolves)
-  useEffect(() => {
-    if (!user) {
-      setSubscription("free");
-      desktopEntitlementRefreshUserRef.current = null;
-      return;
-    }
 
-    if (Array.isArray(entitlements)) {
-      setSubscriptionWithNormalize(resolveSubscriptionTier(entitlements));
-    }
-  }, [user, entitlements, setSubscriptionWithNormalize]);
-
-  // Desktop sessions are created through a separate OAuth transfer flow. Older
-  // desktop sessions may be unscoped, so refresh once to pull WorkOS
-  // entitlements from the user's organization before showing them as free.
-  useEffect(() => {
-    const refreshDesktopEntitlements = async () => {
-      if (!user || typeof window === "undefined" || !isTauriEnvironment()) {
-        return;
-      }
-
-      const currentEntitlements = Array.isArray(entitlements)
-        ? entitlements
-        : [];
-      if (resolveSubscriptionTier(currentEntitlements) !== "free") {
-        return;
-      }
-
-      const url = new URL(window.location.href);
-      if (url.searchParams.get("refresh") === "entitlements") {
-        return;
-      }
-
-      if (desktopEntitlementRefreshUserRef.current === user.id) {
-        return;
-      }
-      desktopEntitlementRefreshUserRef.current = user.id;
-
-      setIsCheckingProPlan(true);
-      try {
-        const response = await fetch("/api/entitlements", {
-          credentials: "include",
-        });
-        if (!response.ok) return;
-
-        const data = await response.json();
-        setSubscriptionWithNormalize(
-          resolveSubscriptionTier(
-            Array.isArray(data.entitlements) ? data.entitlements : [],
-          ),
-        );
-      } catch {
-        // Keep the token-derived tier; this is only a best-effort desktop heal.
-      } finally {
-        setIsCheckingProPlan(false);
-      }
-    };
-
-    refreshDesktopEntitlements();
-  }, [user, entitlements, setSubscriptionWithNormalize]);
-
-  // Refresh entitlements only when explicitly requested via URL param
-  useEffect(() => {
-    const refreshFromUrl = async () => {
-      if (!user) {
-        setSubscriptionWithNormalize("free");
-        setIsCheckingProPlan(false);
-        return;
-      }
-
-      if (typeof window === "undefined") return;
-
-      const url = new URL(window.location.href);
-      const shouldRefresh = url.searchParams.get("refresh") === "entitlements";
-      if (!shouldRefresh) return;
-
-      setIsCheckingProPlan(true);
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        const response = await fetch("/api/entitlements", {
-          credentials: "include",
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (response.ok) {
-          const data = await response.json();
-          const tier = data.subscription as SubscriptionTier | undefined;
-          setSubscription(
-            tier === "ultra" ||
-              tier === "team" ||
-              tier === "pro-plus" ||
-              tier === "pro"
-              ? tier
-              : "free",
-          );
-        } else {
-          if (response.status === 401) {
-            if (typeof window !== "undefined") {
-              const { clientLogout } = await import("@/lib/utils/logout");
-              clientLogout();
-              return;
-            }
-          }
-          setSubscriptionWithNormalize("free");
-        }
-      } catch {
-        setSubscriptionWithNormalize("free");
-      } finally {
-        setIsCheckingProPlan(false);
-        // Remove the refresh param to avoid repeated refreshes
-        url.searchParams.delete("refresh");
-        window.history.replaceState({}, "", url.toString());
-      }
-    };
-
-    refreshFromUrl();
-  }, [user, setSubscriptionWithNormalize]);
 
   // Listen for URL changes to sync temporary chat state
   useEffect(() => {
@@ -805,7 +677,6 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
     setIsTodoPanelExpanded,
 
     subscription,
-    isCheckingProPlan,
 
     clearInput,
     clearUploadedFiles,

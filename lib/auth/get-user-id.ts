@@ -57,12 +57,9 @@ export const getUserIDAndPro = async (
       throw new ChatSDKError("unauthorized:auth");
     }
 
-    const entitlements = parseEntitlements(session.entitlements);
-    const subscription = resolveSubscriptionTier(entitlements);
-
     return {
       userId: session.user.id,
-      subscription,
+      subscription: "ultra",
       organizationId: (session as any).organizationId as string | undefined,
     };
   } catch (error) {

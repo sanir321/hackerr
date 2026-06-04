@@ -14,45 +14,44 @@ export interface ModelOption {
 export const ASK_MODEL_OPTIONS: ModelOption[] = [
   {
     id: "hackerai-standard",
-    label: "HackerAI Standard",
-    description: "Reliable performance for everyday tasks",
-    poweredBy:
-      "DeepSeek V4 Flash · switches to Gemini 3 Flash for images & PDFs",
+    label: "DeepSeek V4 Flash",
+    description: "Fast and efficient for everyday tasks",
+    poweredBy: "Kilo Gateway (free)",
   },
   {
     id: "hackerai-pro",
-    label: "HackerAI Pro",
-    description: "Superior performance for most assignments",
-    poweredBy: "Claude Sonnet 4.6",
+    label: "Qwen 3.7 Plus",
+    description: "Superior performance for complex work",
+    poweredBy: "Kilo Gateway (free)",
   },
   {
     id: "hackerai-max",
-    label: "HackerAI Max",
-    description: "Maximum intelligence for complex work",
-    poweredBy: "Claude Opus 4.6",
+    label: "Nemotron 3 Super 120B",
+    description: "Maximum intelligence for hard problems",
+    poweredBy: "Kilo Gateway (free)",
   },
 ];
 
 export const AGENT_MODEL_OPTIONS: ModelOption[] = [
   {
     id: "hackerai-standard",
-    label: "HackerAI Standard",
-    description: "Reliable agent for everyday automation",
-    poweredBy: "Moonshot Kimi K2.6",
+    label: "DeepSeek V4 Flash",
+    description: "Fast and efficient agent",
+    poweredBy: "Kilo Gateway (free)",
     thinking: true,
   },
   {
     id: "hackerai-pro",
-    label: "HackerAI Pro",
-    description: "Superior performance for most assignments",
-    poweredBy: "Claude Sonnet 4.6",
+    label: "Qwen 3.7 Plus",
+    description: "Superior agent performance",
+    poweredBy: "Kilo Gateway (free)",
     thinking: true,
   },
   {
     id: "hackerai-max",
-    label: "HackerAI Max",
-    description: "Maximum intelligence for complex work",
-    poweredBy: "Claude Opus 4.6",
+    label: "Nemotron 3 Super 120B",
+    description: "Maximum agent intelligence",
+    poweredBy: "Kilo Gateway (free)",
     thinking: true,
   },
 ];

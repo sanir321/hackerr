@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useGlobalState } from "@/app/contexts/GlobalState";
 import { TodoPanel } from "../TodoPanel";
 import type { ChatStatus } from "@/types";
@@ -14,7 +14,6 @@ import {
   type RateLimitWarningData,
 } from "../RateLimitWarning";
 import { isAgentMode } from "@/lib/utils/mode-helpers";
-import { toast } from "sonner";
 import { NULL_THREAD_DRAFT_ID } from "@/lib/utils/client-storage";
 import { SandboxSelector } from "../SandboxSelector";
 import { ChatInputTextarea } from "./ChatInputTextarea";
@@ -76,11 +75,7 @@ export const ChatInput = ({
     setSandboxPreference,
     selectedModel,
     setSelectedModel,
-    subscription,
-    isCheckingProPlan,
     temporaryChatsEnabled,
-    hasLocalSandbox,
-    defaultLocalSandboxPreference,
   } = useGlobalState();
   const isMobile = useIsMobile();
   const {
@@ -91,52 +86,10 @@ export const ChatInput = ({
   } = useFileUpload(chatMode);
 
   const isGenerating = status === "submitted" || status === "streaming";
-  const showContextIndicator =
-    (subscription !== "free" || isAgentMode(chatMode)) && !!contextUsage;
+  const showContextIndicator = !!contextUsage;
   const isAgent = isAgentMode(chatMode);
 
   const draftId = isNewChat ? "new" : chatId || NULL_THREAD_DRAFT_ID;
-
-  // Free agent mode constraints:
-  // 1. Requires local sandbox — fall back to ask mode if disconnected
-  // 2. Force local sandbox preference (not e2b)
-  // 3. Force auto model selection
-  const isFreeAgent =
-    !isCheckingProPlan && subscription === "free" && isAgentMode(chatMode);
-
-  const prevHasLocalSandboxRef = useRef(hasLocalSandbox);
-  useEffect(() => {
-    const wasConnected = prevHasLocalSandboxRef.current;
-    prevHasLocalSandboxRef.current = hasLocalSandbox;
-
-    if (!isFreeAgent) return;
-    // Only show toast on actual disconnect (true → false), not on
-    // initial mount or logout where hasLocalSandbox starts as false.
-    if (!hasLocalSandbox) {
-      setChatMode("ask");
-      if (wasConnected) {
-        toast.info("Local sandbox disconnected. Switched to Ask mode.", {
-          description: "Reconnect your sandbox to use Agent mode.",
-          duration: 5000,
-        });
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFreeAgent, hasLocalSandbox]);
-
-  useEffect(() => {
-    if (!isFreeAgent) return;
-    if (
-      (!sandboxPreference || sandboxPreference === "e2b") &&
-      defaultLocalSandboxPreference
-    ) {
-      setSandboxPreference(defaultLocalSandboxPreference);
-    }
-    if (selectedModel !== "auto") {
-      setSelectedModel("auto");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFreeAgent]);
 
   // Fallback to 'ask' mode when temporary chats are enabled (agent modes not allowed)
   useEffect(() => {

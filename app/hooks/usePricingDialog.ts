@@ -78,9 +78,7 @@ export const usePricingDialog = (subscription?: SubscriptionTier) => {
   };
 };
 
-// Utility function to redirect to pricing (can be used without the hook)
-// Note: This doesn't check subscription tier, so use sparingly
-// Consider using openPricing from the hook instead when possible
+// No-op — all features are permanently unlocked.
 export const redirectToPricing = () => {
-  window.location.hash = "pricing";
+  // No pricing page to redirect to.
 };

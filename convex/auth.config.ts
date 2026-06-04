@@ -5,17 +5,16 @@ const authConfig = {
     ? [
         {
           type: "customJwt" as const,
-          issuer: `https://auth.hackerai.co/`,
+          issuer: `https://api.workos.com/`,
           algorithm: "RS256" as const,
           applicationID: clientId,
-          jwks: `https://auth.hackerai.co/sso/jwks/${clientId}`,
+          jwks: `https://api.workos.com/sso/jwks/${clientId}`,
         },
         {
           type: "customJwt" as const,
-          issuer: `https://auth.hackerai.co/user_management/${clientId}`,
+          issuer: `https://api.workos.com/user_management/${clientId}`,
           algorithm: "RS256" as const,
-          jwks: `https://auth.hackerai.co/sso/jwks/${clientId}`,
-          applicationID: clientId,
+          jwks: `https://api.workos.com/sso/jwks/${clientId}`,
         },
       ]
     : [],

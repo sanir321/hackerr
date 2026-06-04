@@ -1,7 +1,4 @@
 import { X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { redirectToPricing } from "../hooks/usePricingDialog";
-import { openSettingsDialog } from "@/lib/utils/settings-dialog";
 import type { ChatMode, SubscriptionTier } from "@/types";
 
 // Discriminated union for warning data
@@ -108,13 +105,6 @@ export const RateLimitWarning = ({
 }: RateLimitWarningProps) => {
   const timeString = formatTimeUntil(data.resetTime);
   const message = getMessage(data, timeString);
-  const showUpgrade =
-    data.warningType !== "extra-usage-active" &&
-    (data.subscription === "free" ||
-      data.subscription === "pro" ||
-      data.subscription === "pro-plus");
-  const showAddCredits =
-    data.warningType === "token-bucket" && data.subscription !== "free";
 
   return (
     <div
@@ -123,26 +113,6 @@ export const RateLimitWarning = ({
     >
       <div className="flex-1 flex items-center gap-2 flex-wrap">
         <span className="text-foreground text-sm">{message}</span>
-        {showAddCredits && (
-          <Button
-            onClick={() => openSettingsDialog("Extra Usage")}
-            size="sm"
-            variant="outline"
-            className="h-7 px-3 text-xs font-medium border-black/8 dark:border-border"
-          >
-            Add credits
-          </Button>
-        )}
-        {showUpgrade && (
-          <Button
-            onClick={redirectToPricing}
-            size="sm"
-            variant="outline"
-            className="h-7 px-3 text-xs font-medium border-black/8 dark:border-border"
-          >
-            Upgrade plan
-          </Button>
-        )}
       </div>
       <button
         onClick={onDismiss}

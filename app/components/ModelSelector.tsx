@@ -19,20 +19,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import type { ChatMode, SelectedModel } from "@/types/chat";
 import { isAgentMode } from "@/lib/utils/mode-helpers";
-import { useGlobalState } from "@/app/contexts/GlobalState";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import { CostIndicator } from "./ModelSelector/CostIndicator";
@@ -42,10 +31,6 @@ import {
   getDefaultModelForMode,
   type ModelOption,
 } from "./ModelSelector/constants";
-import {
-  dismissProMaxUsageNotice,
-  isProMaxUsageNoticeDismissed,
-} from "@/lib/utils/pro-max-notice-cookie";
 
 // ── Shared sub-components ──────────────────────────────────────────
 
@@ -294,69 +279,25 @@ const ModelOptionList = ({
 
 export function ModelSelector({ value, onChange, mode }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
-  const [pendingProMaxNotice, setPendingProMaxNotice] =
-    useState<ModelOption | null>(null);
-  const { subscription } = useGlobalState();
   const isMobile = useIsMobile();
 
   const isAuto = value === "auto";
-  const isFreeUser = subscription === "free";
-  /** Base Pro tier: Max is flagged as unusually heavy usage vs higher plans. */
-  const isBaseProTier = subscription === "pro";
-
   const options = isAgentMode(mode) ? AGENT_MODEL_OPTIONS : ASK_MODEL_OPTIONS;
 
   const effectiveValue = isAuto ? getDefaultModelForMode(mode) : value;
   const selected =
     options.find((opt) => opt.id === effectiveValue) ?? options[0];
 
-  const isFreeAgent = isFreeUser && isAgentMode(mode);
-  const triggerLabel = isFreeAgent
-    ? "Auto"
-    : isFreeUser
-      ? "Model"
-      : isAuto
-        ? "Auto"
-        : selected.label;
+  const triggerLabel = isAuto ? "Auto" : selected.label;
 
   const handleAutoSelect = () => {
     onChange("auto");
     setOpen(false);
   };
 
-  const applyModelChoice = (option: ModelOption) => {
+  const handleModelSelect = (option: ModelOption) => {
     onChange(option.id);
     setOpen(false);
-  };
-
-  const handleModelSelect = (option: ModelOption) => {
-    if (isFreeUser) {
-      window.location.hash = "pricing";
-      setOpen(false);
-      return;
-    }
-
-    if (
-      isBaseProTier &&
-      option.id === "hackerai-max" &&
-      !isProMaxUsageNoticeDismissed()
-    ) {
-      setPendingProMaxNotice(option);
-      return;
-    }
-
-    applyModelChoice(option);
-  };
-
-  const handleDismissProMaxNotice = () => {
-    setPendingProMaxNotice(null);
-  };
-
-  const handleConfirmProMax = () => {
-    if (!pendingProMaxNotice) return;
-    dismissProMaxUsageNotice();
-    applyModelChoice(pendingProMaxNotice);
-    setPendingProMaxNotice(null);
   };
 
   const trigger = (
@@ -373,38 +314,10 @@ export function ModelSelector({ value, onChange, mode }: ModelSelectorProps) {
     </Button>
   );
 
-  const maxUsageNoticeDialog = (
-    <AlertDialog
-      open={pendingProMaxNotice !== null}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) handleDismissProMaxNotice();
-      }}
-    >
-      <AlertDialogContent className="sm:max-w-md">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Higher usage</AlertDialogTitle>
-          <AlertDialogDescription className="text-left">
-            HackerAI Max uses quota much faster than Standard or Pro. One long
-            task can use much of what&apos;s included on Pro.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleDismissProMaxNotice}>
-            Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirmProMax}>
-            Continue
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-
   if (isMobile) {
     return (
       <>
         {trigger}
-        {maxUsageNoticeDialog}
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetContent
             side="bottom"
@@ -420,7 +333,7 @@ export function ModelSelector({ value, onChange, mode }: ModelSelectorProps) {
               options={options}
               value={value}
               isAuto={isAuto}
-              isFreeUser={isFreeUser}
+              isFreeUser={false}
               mode={mode}
               onAutoSelect={handleAutoSelect}
               onSelect={handleModelSelect}
@@ -435,7 +348,6 @@ export function ModelSelector({ value, onChange, mode }: ModelSelectorProps) {
 
   return (
     <>
-      {maxUsageNoticeDialog}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>{trigger}</PopoverTrigger>
         <PopoverContent className="w-[270px] p-1.5 rounded-xl" align="start">
@@ -443,7 +355,7 @@ export function ModelSelector({ value, onChange, mode }: ModelSelectorProps) {
             options={options}
             value={value}
             isAuto={isAuto}
-            isFreeUser={isFreeUser}
+            isFreeUser={false}
             mode={mode}
             onAutoSelect={handleAutoSelect}
             onSelect={handleModelSelect}

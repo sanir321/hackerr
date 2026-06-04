@@ -47,8 +47,7 @@ export function SandboxSelector({
   const [open, setOpen] = useState(false);
   const [connectHovered, setConnectHovered] = useState(false);
   const { isTauri } = useTauri();
-  const { subscription } = useGlobalState();
-  const isFreeUser = subscription === "free";
+
 
   const detectedPlatform = useMemo(() => {
     if (typeof window === "undefined") return null;
@@ -93,12 +92,7 @@ export function SandboxSelector({
   const valueMatchesOption = options.some((opt) => opt.id === value);
   useEffect(() => {
     if (connections !== undefined && !valueMatchesOption && value !== "e2b") {
-      // Free users can't fall back to Cloud — leave preference as-is,
-      // the ChatInput effect will switch them to ask mode
-      if (isFreeUser) return;
-
       onChange?.("e2b");
-      // Only show toast for remote disconnects, not when Desktop is hidden
       const wasHiddenDesktop = value === "desktop";
       if (!wasHiddenDesktop) {
         toast.info("Local sandbox disconnected. Switched to Cloud.", {
@@ -106,15 +100,7 @@ export function SandboxSelector({
         });
       }
     }
-  }, [connections, valueMatchesOption, value, onChange, isFreeUser]);
-
-  // Auto-select first local option for free users who default to Cloud
-  useEffect(() => {
-    if (!isFreeUser || value !== "e2b" || !connections?.length) return;
-    const desktop = connections.find((c) => c.isDesktop);
-    onChange?.(desktop ? "desktop" : connections[0].connectionId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFreeUser, value, connections]);
+  }, [connections, valueMatchesOption, value, onChange]);
 
   const selectedOption = options.find((opt) => opt.id === value) || options[0];
   const Icon = selectedOption?.icon || Cloud;
@@ -149,22 +135,13 @@ export function SandboxSelector({
           <button
             key={cloudOption.id}
             onClick={() => {
-              if (isFreeUser) {
-                toast.info("Cloud sandbox requires a Pro plan", {
-                  description:
-                    "Use a local sandbox or upgrade to Pro for cloud access.",
-                });
-                return;
-              }
               onChange?.(cloudOption.id);
               setOpen(false);
             }}
             className={`w-full flex items-center gap-2.5 p-2 rounded-md text-left transition-colors ${
-              isFreeUser
-                ? "opacity-60 cursor-not-allowed"
-                : value === cloudOption.id
-                  ? "bg-accent text-accent-foreground"
-                  : "hover:bg-muted"
+              value === cloudOption.id
+                ? "bg-accent text-accent-foreground"
+                : "hover:bg-muted"
             }`}
           >
             <Cloud className="h-4 w-4 shrink-0" />
@@ -173,13 +150,7 @@ export function SandboxSelector({
                 {cloudOption.label}
               </div>
             </div>
-            {isFreeUser ? (
-              <span className="text-[10px] font-semibold bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                Pro
-              </span>
-            ) : (
-              value === cloudOption.id && <Check className="h-4 w-4 shrink-0" />
-            )}
+            {value === cloudOption.id && <Check className="h-4 w-4 shrink-0" />}
           </button>
 
           {desktopOptions.map((option) => {

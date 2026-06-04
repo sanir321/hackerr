@@ -319,22 +319,12 @@ When in doubt, answer from your own knowledge first. One focused query beats sev
 
 const getAskModeSection = (
   modelName: ModelName,
-  subscription: SubscriptionTier,
+  _subscription: SubscriptionTier,
   notesEnabled: boolean,
 ): string => {
   const knowledgeCutOffDate = getModelCutoffDate(modelName);
   const notesCapability = notesEnabled ? " and manage notes" : "";
-  const modeReminder =
-    subscription !== "free"
-      ? `<current_mode>
-You are in ASK MODE with limited tools. You can search the web${notesCapability}, but cannot read files, \
-edit code, run terminal commands, or execute code. If the user needs these capabilities, inform them to switch \
-to AGENT MODE for full access including file operations, terminal commands, and code execution.
-</current_mode>
-
-`
-      : "";
-  return `${modeReminder}${getProductQuestionsSection()}
+  return `${getProductQuestionsSection()}
 
 <tone_and_formatting>
 In typical conversations or when asked simple questions HackerAI keeps its tone natural and responds \
@@ -402,8 +392,7 @@ export const systemPrompt = async (
   sandboxContext?: string | null,
 ): Promise<string> => {
   const shouldIncludeNotes =
-    (subscription !== "free" || mode === "agent") &&
-    (userCustomization?.include_memory_entries ?? true);
+    userCustomization?.include_memory_entries ?? true;
 
   const personalityInstructions = getPersonalityInstructions(
     userCustomization?.personality,
@@ -430,7 +419,7 @@ The current date is ${currentDateTime}.`;
     );
   } else {
     const caidoEnabled =
-      subscription !== "free" && (userCustomization?.caido_enabled ?? false);
+      userCustomization?.caido_enabled ?? false;
     const caidoPort = userCustomization?.caido_port;
     sections.push(
       getAgentModeSection(mode, sandboxContext, caidoEnabled, caidoPort),
@@ -449,10 +438,8 @@ The current date is ${currentDateTime}.`;
 
   // Notes are injected via <system-reminder> in messages to keep the system prompt
   // stable for prompt caching. Only include the static "disabled" message here.
-  if (!shouldIncludeNotes) {
-    sections.push(
-      getNotesDisabledMessage(subscription === "free" && mode !== "agent"),
-    );
+    if (!shouldIncludeNotes) {
+    sections.push(getNotesDisabledMessage(false));
   }
 
   // Add personality instructions at the end

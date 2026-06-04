@@ -1,5 +1,6 @@
 import { customProvider } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { createOpenAI } from "@ai-sdk/openai";
 import type { ChatMode, SelectedModel } from "@/types/chat";
 import { isAgentMode } from "@/lib/utils/mode-helpers";
 import { openrouterAttributionHeaders } from "@/lib/ai/openrouter-attribution";
@@ -171,40 +172,74 @@ const openrouterPatchFetch: typeof fetch = async (url, init) => {
   return globalThis.fetch(url, nextInit);
 };
 
+const openrouterBaseUrl = process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
+
 const openrouter = createOpenRouter({
   fetch: openrouterPatchFetch,
   headers: openrouterAttributionHeaders,
 });
 
+const kiloGateway = createOpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: openrouterBaseUrl,
+});
+
 type OpenRouterInstance = typeof openrouter;
 
-const buildProviderMap = (or: OpenRouterInstance) =>
-  ({
+const isSelfHosted = process.env.SELF_HOSTED === "true";
+
+const buildProviderMap = (or: OpenRouterInstance, gateway: ReturnType<typeof createOpenAI>) => {
+  // Self-hosted: all models route through Kilo Gateway free models
+  if (isSelfHosted) {
+    const standard = gateway("kilo-auto/free");
+    const pro = gateway("qwen/qwen3.7-plus:free");
+    const max = gateway("nvidia/nemotron-3-super-120b-a12b:free");
+    const auto = gateway("kilo-auto/free");
+    return {
+      "ask-model": auto,
+      "ask-model-free": auto,
+      "agent-model": auto,
+      "agent-model-free": auto,
+      "model-sonnet-4.6": pro,
+      "model-gemini-3-flash": auto,
+      "model-deepseek-v4-flash": auto,
+      "model-opus-4.6": max,
+      "model-kimi-k2.6": pro,
+      "fallback-agent-model": auto,
+      "fallback-ask-model": auto,
+      "fallback-gemini-3.5-flash": auto,
+      "fallback-grok-4.3": auto,
+      "title-generator-model": standard,
+    } as Record<string, any>;
+  }
+
+  return {
     "ask-model": or("google/gemini-3-flash-preview"),
     "ask-model-free": or("deepseek/deepseek-v4-flash"),
-    "agent-model": or("moonshotai/kimi-k2.6:exacto"),
+    "agent-model": gateway("gpt-4.1"),
     "agent-model-free": or("deepseek/deepseek-v4-flash"),
     "model-sonnet-4.6": or("anthropic/claude-sonnet-4-6"),
     "model-gemini-3-flash": or("google/gemini-3-flash-preview"),
     "model-deepseek-v4-flash": or("deepseek/deepseek-v4-flash"),
-    "model-opus-4.6": or("anthropic/claude-opus-4.6"),
+    "model-opus-4.6": or("anthropic/claude-opus-4-6"),
     "model-kimi-k2.6": or("moonshotai/kimi-k2.6:exacto"),
     "fallback-agent-model": or("google/gemini-3-flash-preview"),
     "fallback-ask-model": or("google/gemini-3-flash-preview"),
     "fallback-gemini-3.5-flash": or("google/gemini-3.5-flash"),
     "fallback-grok-4.3": or("x-ai/grok-4.3"),
     "title-generator-model": or("google/gemini-3-flash-preview"),
-  }) as Record<string, any>;
+  } as Record<string, any>;
+};
 
-const baseProviders = buildProviderMap(openrouter);
+const baseProviders = buildProviderMap(openrouter, kiloGateway);
 
 export type ModelName = keyof typeof baseProviders;
 
 export const modelCutoffDates: Record<ModelName, string> &
   Record<string, string> = {
-  "ask-model": "January 2025",
+  "ask-model": isSelfHosted ? "May 2025" : "January 2025",
   "ask-model-free": "May 2025",
-  "agent-model": "April 2024",
+  "agent-model": isSelfHosted ? "May 2025" : "April 2024",
   "agent-model-free": "May 2025",
   "model-sonnet-4.6": "May 2025",
   "model-gemini-3-flash": "January 2025",
@@ -220,20 +255,20 @@ export const modelCutoffDates: Record<ModelName, string> &
 
 export const modelDisplayNames: Record<ModelName, string> &
   Record<string, string> = {
-  "ask-model": "Auto, an intelligent model router built by HackerAI",
-  "ask-model-free": "Auto, an intelligent model router built by HackerAI",
-  "agent-model": "Auto, an intelligent model router built by HackerAI",
-  "agent-model-free": "Auto, an intelligent model router built by HackerAI",
-  "model-sonnet-4.6": "Anthropic Claude Sonnet 4.6",
-  "model-gemini-3-flash": "Google Gemini 3 Flash",
+  "ask-model": "Auto — intelligent model router",
+  "ask-model-free": "Auto — intelligent model router",
+  "agent-model": "Auto — intelligent model router",
+  "agent-model-free": "Auto — intelligent model router",
+  "model-sonnet-4.6": isSelfHosted ? "Qwen 3.7 Plus (Free)" : "Anthropic Claude Sonnet 4.6",
+  "model-gemini-3-flash": isSelfHosted ? "Kilo Auto Free" : "Google Gemini 3 Flash",
   "model-deepseek-v4-flash": "DeepSeek V4 Flash",
-  "model-opus-4.6": "Anthropic Claude Opus 4.6",
-  "model-kimi-k2.6": "Moonshot Kimi K2.6",
-  "fallback-agent-model": "Auto, an intelligent model router built by HackerAI",
-  "fallback-ask-model": "Auto, an intelligent model router built by HackerAI",
-  "fallback-gemini-3.5-flash": "Google Gemini 3.5 Flash",
-  "fallback-grok-4.3": "Auto, an intelligent model router built by HackerAI",
-  "title-generator-model": "Google Gemini 3 Flash",
+  "model-opus-4.6": isSelfHosted ? "Nemotron 3 Super (Free)" : "Anthropic Claude Opus 4.6",
+  "model-kimi-k2.6": isSelfHosted ? "Qwen 3.7 Plus (Free)" : "Moonshot Kimi K2.6",
+  "fallback-agent-model": "Auto — intelligent model router",
+  "fallback-ask-model": "Auto — intelligent model router",
+  "fallback-gemini-3.5-flash": isSelfHosted ? "Kilo Auto Free" : "Google Gemini 3.5 Flash",
+  "fallback-grok-4.3": "Auto — intelligent model router",
+  "title-generator-model": "DeepSeek V4 Flash",
 };
 
 export const getModelDisplayName = (modelName: ModelName): string => {
@@ -293,6 +328,13 @@ export function resolveTierToProviderKey(
   mode: ChatMode,
 ): ModelName | null {
   if (tier === "auto") return null;
+  if (isSelfHosted) {
+    switch (tier) {
+      case "hackerai-pro": return "model-sonnet-4.6";
+      case "hackerai-max": return "model-opus-4.6";
+      default: return "model-deepseek-v4-flash";
+    }
+  }
   switch (tier) {
     case "hackerai-standard":
       return isAgentMode(mode) ? "model-kimi-k2.6" : "model-gemini-3-flash";
