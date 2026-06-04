@@ -18,6 +18,7 @@ import {
   type QueuedMessage,
   type QueueBehavior,
   type SandboxPreference,
+  type SubscriptionTier,
   isChatMode,
 } from "@/types/chat";
 import { isAgentMode } from "@/lib/utils/mode-helpers";
@@ -291,7 +292,7 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
     },
     [],
   );
-  const [subscription] = useState<SubscriptionTier>("ultra");
+  const [subscription] = useState<SubscriptionTier>("ultra" as SubscriptionTier);
 
 
   const chatResetRef = useRef<(() => void) | null>(null);
