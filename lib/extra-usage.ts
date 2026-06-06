@@ -163,30 +163,20 @@ export async function deductFromBalance(
   try {
     const convex = getConvexClient();
 
-    // Use the Convex action that handles deduction + auto-reload internally
-    // Pass points directly to avoid precision loss from dollar conversion
-    const result = await convex.action(
-      api.extraUsageActions.deductWithAutoReload,
-      {
-        serviceKey: process.env.CONVEX_SERVICE_ROLE_KEY!,
-        userId,
-        amountPoints: pointsUsed,
-      },
-    );
+    const result = await convex.mutation(api.extraUsage.deductPoints, {
+      serviceKey: process.env.CONVEX_SERVICE_ROLE_KEY!,
+      userId,
+      amountPoints: pointsUsed,
+    });
 
     return {
       success: result.success,
       newBalanceDollars: result.newBalanceDollars,
       insufficientFunds: result.insufficientFunds,
       monthlyCapExceeded: result.monthlyCapExceeded,
-      autoReloadTriggered: result.autoReloadTriggered,
-      autoReloadResult: result.autoReloadResult,
     };
   } catch (error) {
     console.error("Error deducting from balance:", error);
-    // Do NOT report as insufficientFunds — this was a service error, not an
-    // empty balance. Returning insufficientFunds: false lets the caller
-    // distinguish transient failures from actual balance exhaustion.
     return {
       success: false,
       newBalanceDollars: 0,
@@ -243,8 +233,7 @@ export async function getTeamExtraUsageState(
 
 /**
  * Deduct from team balance for a specific member. Enforces per-member cap,
- * member-disabled flag, and team-wide cap. Triggers auto-reload on the org's
- * Stripe customer when applicable.
+ * member-disabled flag, and team-wide cap.
  */
 export async function deductFromTeamBalance(
   organizationId: string,
@@ -263,23 +252,18 @@ export async function deductFromTeamBalance(
 
   try {
     const convex = getConvexClient();
-    const result = await convex.action(
-      api.teamExtraUsageActions.deductWithAutoReloadForTeam,
-      {
-        serviceKey: process.env.CONVEX_SERVICE_ROLE_KEY!,
-        organizationId,
-        userId,
-        amountPoints: pointsUsed,
-      },
-    );
+    const result = await convex.mutation(api.teamExtraUsage.deductTeamPoints, {
+      serviceKey: process.env.CONVEX_SERVICE_ROLE_KEY!,
+      organizationId,
+      userId,
+      amountPoints: pointsUsed,
+    });
 
     return {
       success: result.success,
       newBalanceDollars: result.newBalanceDollars,
       insufficientFunds: result.insufficientFunds,
       monthlyCapExceeded: result.monthlyCapExceeded,
-      autoReloadTriggered: result.autoReloadTriggered,
-      autoReloadResult: result.autoReloadResult,
       memberCapExceeded: result.memberCapExceeded,
       memberDisabled: result.memberDisabled,
       poolDisabled: result.poolDisabled,

@@ -38,7 +38,6 @@ You'll need the following accounts:
 - [Redis](https://redis.io/) - Stream resumption
 - [Upstash Redis](https://upstash.com/) - Rate limiting
 - [PostHog](https://posthog.com/) - Analytics
-- [Stripe](https://stripe.com/) - Payment processing
 
 ### Clone the repo
 

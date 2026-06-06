@@ -130,10 +130,6 @@ async function insertRewardLog(
     referrerUserId?: string;
     referredUserId?: string;
     referralCode?: string;
-    stripeCheckoutSessionId?: string;
-    stripeCustomerId?: string;
-    stripeSubscriptionId?: string;
-    stripeInvoiceId?: string;
   },
 ) {
   const existing = await ctx.db
@@ -156,10 +152,6 @@ async function insertRewardLog(
     referred_user_id: args.referredUserId,
     referral_code: args.referralCode,
     reason: args.reason,
-    stripe_checkout_session_id: args.stripeCheckoutSessionId,
-    stripe_customer_id: args.stripeCustomerId,
-    stripe_subscription_id: args.stripeSubscriptionId,
-    stripe_invoice_id: args.stripeInvoiceId,
     created_at: Date.now(),
   });
 
@@ -178,10 +170,6 @@ async function grantReward(
     referralCode?: string;
     subscriptionTier?: PaidTier;
     organizationId?: string;
-    stripeCheckoutSessionId?: string;
-    stripeCustomerId?: string;
-    stripeSubscriptionId?: string;
-    stripeInvoiceId?: string;
   },
 ) {
   if (!Number.isFinite(args.amountDollars) || args.amountDollars <= 0) {
@@ -214,10 +202,6 @@ async function grantReward(
     referrerUserId: args.referrerUserId,
     referredUserId: args.referredUserId,
     referralCode: args.referralCode,
-    stripeCheckoutSessionId: args.stripeCheckoutSessionId,
-    stripeCustomerId: args.stripeCustomerId,
-    stripeSubscriptionId: args.stripeSubscriptionId,
-    stripeInvoiceId: args.stripeInvoiceId,
   });
 
   convexLogger.info("referral_reward_awarded", {
@@ -709,9 +693,6 @@ export const recordReferralCheckoutSession = mutation({
   args: {
     serviceKey: v.string(),
     referredUserId: v.string(),
-    stripeCustomerId: v.string(),
-    stripeCheckoutSessionId: v.string(),
-    stripeSubscriptionId: v.optional(v.string()),
     requestedPlan: v.string(),
   },
   returns: v.object({
@@ -732,10 +713,6 @@ export const recordReferralCheckoutSession = mutation({
     if (!attribution) return { recorded: false };
 
     await ctx.db.patch(attribution._id, {
-      stripe_customer_id: args.stripeCustomerId,
-      stripe_checkout_session_id: args.stripeCheckoutSessionId,
-      stripe_subscription_id:
-        args.stripeSubscriptionId ?? attribution.stripe_subscription_id,
       requested_plan: args.requestedPlan,
       updated_at: Date.now(),
     });
@@ -753,10 +730,6 @@ export const awardConversionReward = mutation({
     serviceKey: v.string(),
     referrerRewardDollars: v.number(),
     referredUserId: v.optional(v.string()),
-    stripeCheckoutSessionId: v.optional(v.string()),
-    stripeCustomerId: v.optional(v.string()),
-    stripeSubscriptionId: v.optional(v.string()),
-    stripeInvoiceId: v.optional(v.string()),
     plan: v.optional(v.string()),
     tier: v.optional(paidTierValidator),
   },
@@ -784,49 +757,12 @@ export const awardConversionReward = mutation({
           .first()
       : null;
 
-    if (!attribution && args.stripeSubscriptionId) {
-      attribution = await ctx.db
-        .query("referral_attributions")
-        .withIndex("by_stripe_subscription_id", (q) =>
-          q.eq("stripe_subscription_id", args.stripeSubscriptionId),
-        )
-        .order("desc")
-        .first();
-    }
-
-    if (!attribution && args.stripeCheckoutSessionId) {
-      attribution = await ctx.db
-        .query("referral_attributions")
-        .withIndex("by_stripe_checkout_session_id", (q) =>
-          q.eq("stripe_checkout_session_id", args.stripeCheckoutSessionId),
-        )
-        .order("desc")
-        .first();
-    }
-
-    if (!attribution && args.stripeCustomerId) {
-      attribution = await ctx.db
-        .query("referral_attributions")
-        .withIndex("by_stripe_customer_id", (q) =>
-          q.eq("stripe_customer_id", args.stripeCustomerId),
-        )
-        .order("desc")
-        .first();
-    }
-
     if (!attribution) {
       return { status: "no_attribution" as const };
     }
 
     const now = Date.now();
     await ctx.db.patch(attribution._id, {
-      stripe_checkout_session_id:
-        args.stripeCheckoutSessionId ?? attribution.stripe_checkout_session_id,
-      stripe_customer_id:
-        args.stripeCustomerId ?? attribution.stripe_customer_id,
-      stripe_subscription_id:
-        args.stripeSubscriptionId ?? attribution.stripe_subscription_id,
-      stripe_invoice_id: args.stripeInvoiceId ?? attribution.stripe_invoice_id,
       requested_plan: args.plan ?? attribution.requested_plan,
       converted_tier: args.tier ?? attribution.converted_tier,
       updated_at: now,
@@ -865,10 +801,6 @@ export const awardConversionReward = mutation({
         referrerUserId: attribution.referrer_user_id,
         referredUserId: attribution.referred_user_id,
         referralCode: attribution.referral_code,
-        stripeCheckoutSessionId: args.stripeCheckoutSessionId,
-        stripeCustomerId: args.stripeCustomerId,
-        stripeSubscriptionId: args.stripeSubscriptionId,
-        stripeInvoiceId: args.stripeInvoiceId,
         reason: "non_qualifying_plan",
       });
       return {
@@ -899,10 +831,6 @@ export const awardConversionReward = mutation({
         referrerUserId: attribution.referrer_user_id,
         referredUserId: attribution.referred_user_id,
         referralCode: attribution.referral_code,
-        stripeCheckoutSessionId: args.stripeCheckoutSessionId,
-        stripeCustomerId: args.stripeCustomerId,
-        stripeSubscriptionId: args.stripeSubscriptionId,
-        stripeInvoiceId: args.stripeInvoiceId,
         reason: "referrer_not_paid",
       });
       return {
@@ -924,10 +852,6 @@ export const awardConversionReward = mutation({
       referralCode: attribution.referral_code,
       subscriptionTier: attribution.referrer_subscription_tier,
       organizationId: attribution.referrer_organization_id,
-      stripeCheckoutSessionId: args.stripeCheckoutSessionId,
-      stripeCustomerId: args.stripeCustomerId,
-      stripeSubscriptionId: args.stripeSubscriptionId,
-      stripeInvoiceId: args.stripeInvoiceId,
     });
 
     await ctx.db.patch(attribution._id, {

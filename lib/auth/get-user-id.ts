@@ -1,18 +1,11 @@
 import type { NextRequest } from "next/server";
 import { ChatSDKError } from "@/lib/errors";
 import type { SubscriptionTier } from "@/types";
-import {
-  parseEntitlements,
-  resolveSubscriptionTier,
-} from "@/lib/auth/entitlements";
+import { getSubscriptionTier } from "@/lib/auth/manual-subscription";
 
 /**
  * Get the current user ID from the authenticated session
  * Throws ChatSDKError if user is not authenticated
- *
- * @param req - NextRequest object (server-side only)
- * @returns Promise<string> - User ID
- * @throws ChatSDKError - When user is not authenticated
  */
 export const getUserID = async (req: NextRequest): Promise<string> => {
   try {
@@ -35,12 +28,8 @@ export const getUserID = async (req: NextRequest): Promise<string> => {
 };
 
 /**
- * Get the current user ID and pro status from the authenticated session
- * Throws ChatSDKError if user is not authenticated
- *
- * @param req - NextRequest object (server-side only)
- * @returns Promise<{ userId: string; isPro: boolean; subscription: SubscriptionTier }> - Object with userId, isPro, and subscription
- * @throws ChatSDKError - When user is not authenticated
+ * Get the current user ID and subscription tier.
+ * Tier is read from manual-subscription store (defaults to "free").
  */
 export const getUserIDAndPro = async (
   req: NextRequest,
@@ -57,9 +46,12 @@ export const getUserIDAndPro = async (
       throw new ChatSDKError("unauthorized:auth");
     }
 
+    const userId = session.user.id;
+    const tier = getSubscriptionTier(userId);
+
     return {
-      userId: session.user.id,
-      subscription: "ultra",
+      userId,
+      subscription: tier,
       organizationId: (session as any).organizationId as string | undefined,
     };
   } catch (error) {
@@ -74,13 +66,6 @@ export const getUserIDAndPro = async (
 
 /**
  * Get the current user ID only if the user has signed in recently.
- * Enforces a freshness window (default 10 minutes) using session.user.lastSignInAt.
- * Throws ChatSDKError if unauthenticated or if the last sign-in is stale.
- *
- * @param req - NextRequest object (server-side only)
- * @param windowMs - Freshness window in milliseconds (default 10 minutes)
- * @returns Promise<string> - User ID
- * @throws ChatSDKError - When user is not authenticated or login is stale
  */
 export const getUserIDWithFreshLogin = async (
   req: NextRequest,

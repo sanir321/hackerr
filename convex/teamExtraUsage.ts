@@ -81,8 +81,8 @@ function currentMonthString(): string {
 // =============================================================================
 
 /**
- * Add credits to team balance (after successful Stripe payment).
- * Idempotent via optional idempotencyKey (Stripe session ID).
+ * Add credits to team balance.
+ * Idempotent via optional idempotencyKey.
  */
 export const addTeamCredits = mutation({
   args: {
@@ -90,16 +90,6 @@ export const addTeamCredits = mutation({
     organizationId: v.string(),
     amountDollars: v.number(),
     idempotencyKey: v.optional(v.string()),
-    legacyIdempotencyKey: v.optional(v.string()),
-    revenueSource: v.optional(
-      v.union(
-        v.literal("team_extra_usage_purchase"),
-        v.literal("team_extra_usage_auto_reload"),
-      ),
-    ),
-    stripeCustomerId: v.optional(v.string()),
-    stripeCheckoutSessionId: v.optional(v.string()),
-    stripePaymentIntentId: v.optional(v.string()),
   },
   returns: v.object({
     newBalance: v.number(),
@@ -108,27 +98,23 @@ export const addTeamCredits = mutation({
   handler: async (ctx, args) => {
     validateServiceKey(args.serviceKey);
 
-    const sessionKey = args.idempotencyKey;
-    if (sessionKey) {
+    const idempotencyKey = args.idempotencyKey;
+    if (idempotencyKey) {
       const durableExisting = await ctx.db
         .query("processed_checkout_sessions")
-        .withIndex("by_session_key", (q) => q.eq("session_key", sessionKey))
+        .withIndex("by_session_key", (q) => q.eq("session_key", idempotencyKey))
         .unique();
       if (durableExisting) {
         return { newBalance: 0, alreadyProcessed: true };
       }
     }
 
-    const dedupKeys = [args.idempotencyKey, args.legacyIdempotencyKey].filter(
-      (k): k is string => typeof k === "string" && k.length > 0,
-    );
-    for (const key of dedupKeys) {
-      const existing = await ctx.db
+    if (idempotencyKey) {
+      const webhookExisting = await ctx.db
         .query("processed_webhooks")
-        .withIndex("by_event_id", (q) => q.eq("event_id", key))
+        .withIndex("by_event_id", (q) => q.eq("event_id", idempotencyKey))
         .first();
-
-      if (existing) {
+      if (webhookExisting) {
         return { newBalance: 0, alreadyProcessed: true };
       }
     }
@@ -178,21 +164,13 @@ export const addTeamCredits = mutation({
       organizationId: args.organizationId,
       source: "team_extra_usage",
       sourceEventId:
-        args.stripeCheckoutSessionId ??
-        args.stripePaymentIntentId ??
         args.idempotencyKey ??
         `team_extra_usage:${args.organizationId}:${Date.now()}`,
-      idempotencyKey:
-        args.idempotencyKey ??
-        args.stripePaymentIntentId ??
-        args.stripeCheckoutSessionId,
+      idempotencyKey: args.idempotencyKey,
       grossRevenueDollars: args.amountDollars,
       currency: "usd",
       attributionStrategy: "organization_pool",
-      stripeCustomerId: args.stripeCustomerId,
-      stripeCheckoutSessionId: args.stripeCheckoutSessionId,
-      stripePaymentIntentId: args.stripePaymentIntentId,
-      description: args.revenueSource ?? "team_extra_usage_purchase",
+      description: "team_extra_usage_purchase",
     });
 
     convexLogger.info("team_credits_added", {

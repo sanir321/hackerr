@@ -5,7 +5,7 @@ const authConfig = {
     ? [
         {
           type: "customJwt" as const,
-          issuer: `https://api.workos.com/`,
+          issuer: "https://api.workos.com/",
           algorithm: "RS256" as const,
           applicationID: clientId,
           jwks: `https://api.workos.com/sso/jwks/${clientId}`,

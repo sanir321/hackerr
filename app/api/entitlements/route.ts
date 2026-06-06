@@ -75,11 +75,11 @@ export async function GET(req: NextRequest) {
       : await session.refresh();
 
     const { sealedSession, entitlements } = refreshResult as any;
+    const userId = ((authResult as any)?.user?.id ?? "") as string;
 
     const allEntitlements = parseEntitlements(entitlements);
-    const subscription = resolveSubscriptionTier(allEntitlements);
+    const subscription = resolveSubscriptionTier(userId);
 
-    // Create response with entitlements and normalized subscription tier
     const response = json({
       entitlements: allEntitlements,
       subscription,

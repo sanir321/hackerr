@@ -339,7 +339,7 @@ export const checkTokenBucketLimit = async (
             });
           }
 
-          // If we tried auto-reload and Stripe declined the card, give the
+          // If we tried auto-reload and it failed, give the
           // user a precise message naming the decline reason instead of the
           // generic "balance is empty" copy. Checked AFTER the cap branches
           // so capped users still see the cap message (deductPoints returns
@@ -728,7 +728,7 @@ export const calculateProratedCredits = (
  *
  * @param consumedCredits - Credits already consumed from the old tier this cycle.
  *   Deducted from the prorated allocation so users can't "double-dip".
- * @param periodEndSeconds - Optional Stripe `current_period_end` (unix seconds).
+ * @param periodEndSeconds - Optional subscription period end (unix seconds).
  *   When supplied, the bucket's internal `refilledAt` is rewritten so Upstash's
  *   reported reset (`refilledAt + 30 d`) lands on the actual invoice date
  *   instead of 30 days from now. Matters for mid-cycle upgrades, where the
@@ -767,7 +767,7 @@ export const initProratedBucket = async (
       await monthly.limiter.limit(monthly.key, { rate: burnAmount });
     }
 
-    // Align the UI-facing reset time with Stripe's billing cycle. Upstash's
+    // Align the UI-facing reset time with the subscription cycle. Upstash's
     // token bucket computes reset as `refilledAt + interval`; our interval is
     // hardcoded to 30 d, so setting `refilledAt = periodEnd - 30 d` makes the
     // reported reset land exactly on the next invoice date. `refilledAt` is

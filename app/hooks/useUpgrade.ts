@@ -1,17 +1,13 @@
 import { useState } from "react";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
 import { toast } from "sonner";
-import {
-  captureAuthenticatedEvent,
-  getPostHogRequestHeaders,
-} from "@/lib/analytics/client";
 
 export const useUpgrade = () => {
   const { user } = useAuth();
   const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   const handleUpgrade = async (
-    planKey?:
+    _planKey?:
       | "pro-monthly-plan"
       | "pro-plus-monthly-plan"
       | "ultra-monthly-plan"
@@ -21,15 +17,12 @@ export const useUpgrade = () => {
       | "team-monthly-plan"
       | "team-yearly-plan",
     e?: React.MouseEvent<HTMLButtonElement | HTMLDivElement>,
-    quantity?: number,
-    currentSubscription?: "free" | "pro" | "pro-plus" | "ultra" | "team",
+    _quantity?: number,
+    _currentSubscription?: "free" | "pro" | "pro-plus" | "ultra" | "team",
   ) => {
     e?.preventDefault();
 
-    // Prevent duplicate submits
-    if (upgradeLoading) {
-      return;
-    }
+    if (upgradeLoading) return;
 
     if (!user) {
       toast.error("Please sign in to upgrade");
@@ -38,119 +31,21 @@ export const useUpgrade = () => {
 
     setUpgradeLoading(true);
 
-    try {
-      const selectedPlan = planKey || "pro-monthly-plan";
-      const requestBody: { plan: string; quantity?: number } = {
-        plan: selectedPlan,
-      };
+    const email = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@example.com";
+    const subject = encodeURIComponent(
+      `Upgrade request: ${user.email ?? user.id}`,
+    );
+    const body = encodeURIComponent(
+      `User ID: ${user.id}\nEmail: ${user.email ?? "N/A"}\n\nPlease upgrade my subscription tier.\n\nTo upgrade, run:\ncurl -X POST https://hackerai.co/api/admin/set-tier \\\n  -H "x-api-key: YOUR_ADMIN_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"userId":"${user.id}","tier":"pro"}'
+`,
+    );
+    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
 
-      // Add quantity for team plans
-      if (quantity && quantity > 1) {
-        requestBody.quantity = quantity;
-      }
+    toast.success("Opening your email client...", {
+      description: `Your user ID (${user.id}) will be included for the admin.`,
+    });
 
-      // Use regular checkout for new subscriptions (free users)
-      if (!currentSubscription || currentSubscription === "free") {
-        captureAuthenticatedEvent("checkout_intent_clicked", {
-          plan: selectedPlan,
-          quantity,
-          from_tier: currentSubscription ?? "free",
-          checkout_type: "new_subscription",
-        });
-
-        const res = await fetch("/api/subscribe", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...getPostHogRequestHeaders(),
-          },
-          body: JSON.stringify(requestBody),
-        });
-
-        const data = await res.json().catch(() => ({}));
-
-        if (!res.ok) {
-          toast.error(
-            data.error || `Something went wrong (HTTP ${res.status})`,
-          );
-          return;
-        }
-
-        const { error, url } = data;
-
-        if (url) {
-          captureAuthenticatedEvent("checkout_redirected", {
-            plan: selectedPlan,
-            quantity,
-            from_tier: currentSubscription ?? "free",
-            checkout_type: "new_subscription",
-          });
-          window.location.href = url;
-          return;
-        }
-
-        if (error) {
-          toast.error(`Error: ${error}`);
-        } else {
-          toast.error("Unknown error creating checkout session");
-        }
-      } else {
-        // For existing subscribers, use immediate subscription update
-        // This prevents the "free credit" exploit
-        captureAuthenticatedEvent("subscription_change_intent_clicked", {
-          plan: selectedPlan,
-          quantity,
-          from_tier: currentSubscription,
-          checkout_type: "subscription_change",
-        });
-
-        const res = await fetch("/api/subscription-details", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...getPostHogRequestHeaders(),
-          },
-          body: JSON.stringify({
-            plan: planKey,
-            confirm: true,
-            quantity: quantity,
-          }),
-        });
-
-        const result = await res.json().catch(() => ({}));
-
-        if (!res.ok) {
-          toast.error(
-            result.error || `Something went wrong (HTTP ${res.status})`,
-          );
-          return;
-        }
-
-        if (result.success) {
-          // Subscription updated successfully, refresh to show new plan
-          const url = new URL(window.location.href);
-          url.searchParams.set("refresh", "entitlements");
-          url.hash = ""; // Remove #pricing hash if present
-          window.location.href = url.toString();
-        } else if (result.invoiceUrl) {
-          // Payment failed, redirect to invoice payment page
-          window.location.href = result.invoiceUrl;
-        } else if (result.error) {
-          toast.error(`Error: ${result.error}`);
-        } else {
-          toast.error("Unknown error updating subscription");
-        }
-      }
-    } catch (err) {
-      // Surface real error messages when err is an Error
-      if (err instanceof Error) {
-        toast.error(err.message);
-      } else {
-        toast.error("An unexpected error occurred");
-      }
-    } finally {
-      setUpgradeLoading(false);
-    }
+    setUpgradeLoading(false);
   };
 
   return {

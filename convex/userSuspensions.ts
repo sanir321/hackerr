@@ -33,8 +33,6 @@ export const upsertActive = mutation({
     category: suspensionCategoryValidator,
     sourceId: v.string(),
     sourceReason: v.optional(v.string()),
-    stripeCustomerId: v.string(),
-    stripeChargeId: v.optional(v.string()),
     workosOrganizationId: v.optional(v.string()),
     sourceCreatedAt: v.optional(v.number()),
   },
@@ -52,16 +50,14 @@ export const upsertActive = mutation({
     const fields = {
       status: "active" as const,
       category: args.category,
-      source: "stripe" as const,
+      source: "admin" as const,
       source_id: args.sourceId,
       source_reason: args.sourceReason,
-      stripe_customer_id: args.stripeCustomerId,
-      stripe_charge_id: args.stripeChargeId,
       workos_organization_id: args.workosOrganizationId,
       updated_at: now,
       source_created_at: args.sourceCreatedAt ?? now,
-      resolved_at: undefined,
-      resolved_reason: undefined,
+      resolved_at: undefined as undefined,
+      resolved_reason: undefined as undefined,
     };
 
     if (existing) {

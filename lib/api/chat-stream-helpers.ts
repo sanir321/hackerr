@@ -894,23 +894,13 @@ export function assertFreeAgentGates(args: {
   sandboxPreference: SandboxPreference | undefined;
   rawSelectedModel: string | undefined;
 }): void {
-  const { mode, subscription, sandboxPreference, rawSelectedModel } = args;
+  const { mode, subscription } = args;
   if (!isAgentMode(mode) || subscription !== "free") return;
 
-  const isLocalSandbox = sandboxPreference && sandboxPreference !== "e2b";
-  if (!isLocalSandbox) {
-    throw new ChatSDKError(
-      "forbidden:chat",
-      "Agent mode on the free plan requires a local sandbox. Install the desktop app or upgrade to Pro for cloud access.",
-    );
-  }
-
-  if (rawSelectedModel && rawSelectedModel !== "auto") {
-    throw new ChatSDKError(
-      "forbidden:chat",
-      "Custom model selection in agent mode requires a Pro plan. Free agent mode uses the default model.",
-    );
-  }
+  throw new ChatSDKError(
+    "forbidden:chat",
+    "Agent mode requires a Pro or Ultra subscription. Upgrade to use agent mode.",
+  );
 }
 
 /**

@@ -1,45 +1,26 @@
 import type { SubscriptionTier } from "@/types";
+import { getSubscriptionTier } from "@/lib/auth/manual-subscription";
 
-/** All known paid entitlement slugs, grouped by tier (highest first). */
-const TIER_ENTITLEMENTS: ReadonlyArray<{
-  tier: SubscriptionTier;
-  slugs: readonly string[];
-}> = [
-  {
-    tier: "ultra",
-    slugs: ["ultra-plan", "ultra-monthly-plan", "ultra-yearly-plan"],
-  },
-  { tier: "team", slugs: ["team-plan"] },
-  {
-    tier: "pro-plus",
-    slugs: ["pro-plus-plan", "pro-plus-monthly-plan", "pro-plus-yearly-plan"],
-  },
-  {
-    tier: "pro",
-    slugs: ["pro-plan", "pro-monthly-plan", "pro-yearly-plan"],
-  },
-];
+const PAID_TIERS: SubscriptionTier[] = ["pro", "ultra"];
 
-/**
- * Safely coerce a raw entitlements value (from a JWT or session) into a
- * typed string array.
- */
-export function parseEntitlements(raw: unknown): string[] {
-  return Array.isArray(raw)
-    ? raw.filter((e: unknown): e is string => typeof e === "string")
-    : [];
+export function parseEntitlements(entitlements: readonly string[]) {
+  return entitlements;
 }
 
-/**
- * Resolve the highest subscription tier present in an entitlements list.
- * Returns `"free"` when no paid entitlement matches.
- */
 export function resolveSubscriptionTier(
-  _entitlements: readonly string[],
+  userIdOrEntitlements: string | readonly string[],
 ): SubscriptionTier {
-  return "ultra";
+  if (typeof userIdOrEntitlements === "string") {
+    return getSubscriptionTier(userIdOrEntitlements);
+  }
+  return "free";
 }
 
-export function hasPaidEntitlement(_entitlements: readonly string[]): boolean {
+export function hasPaidEntitlement(
+  userIdOrEntitlements: string | readonly string[],
+): boolean {
+  if (typeof userIdOrEntitlements === "string") {
+    return PAID_TIERS.includes(getSubscriptionTier(userIdOrEntitlements));
+  }
   return true;
 }

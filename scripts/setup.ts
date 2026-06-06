@@ -159,7 +159,7 @@ async function configureConvexDashboard(
   console.log("\nOptional variables (add later if using these features):");
   console.log("   - AWS_S3_* variables (if using S3 storage)");
   console.log("   - REDIS_URL (if using Redis for stream resumption)");
-  console.log("   - STRIPE_* variables (if using Stripe payments)");
+
   return await question(
     "\nHit enter after you have added the required environment variables to Convex Dashboard",
   );
@@ -263,14 +263,6 @@ E2B_TEMPLATE=terminal-agent-sandbox
 # NEXT_PUBLIC_POSTHOG_KEY=phc_
 # NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 # NEXT_PUBLIC_POSTHOG_TRACK_FREE_USERS=true
-
-# =============================================================================
-# PAYMENTS (Optional - Stripe)
-# =============================================================================
-# Sign up at: https://stripe.com/
-# ⚠️ IMPORTANT: If using Stripe, also add these to Convex Dashboard → Environment Variables
-# STRIPE_API_KEY=sk_test_
-# STRIPE_EXTRA_USAGE_WEBHOOK_SECRET=
 
 # =============================================================================
 # BASE URL (Required)

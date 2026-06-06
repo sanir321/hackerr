@@ -6,6 +6,7 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   ReactNode,
@@ -279,6 +280,22 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
   const [chatSidebarOpen, setChatSidebarOpen] = useState(() =>
     chatSidebarStorage.get(isMobile ?? false),
   );
+
+  // Persist sidebar state and close on mobile transition
+  // Note: This intentionally closes sidebar on mobile transition.
+  // The effect only runs when transitioning (prevIsMobile=false, isMobile=true)
+  // and sets to false, which won't cause re-trigger.
+  useLayoutEffect(() => {
+    chatSidebarStorage.save(chatSidebarOpen, isMobile ?? false);
+
+    if (!prevIsMobile.current && isMobile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setChatSidebarOpen(false);
+    }
+
+    prevIsMobile.current = isMobile;
+  }, [chatSidebarOpen, isMobile]);
+
   const [todos, setTodos] = useState<Todo[]>([]);
   const [isTodoPanelExpanded, setIsTodoPanelExpanded] = useState(false);
   const mergeTodos = useCallback((newTodos: Todo[]) => {
@@ -292,8 +309,17 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
     },
     [],
   );
-  const [subscription] = useState<SubscriptionTier>("ultra" as SubscriptionTier);
+  const [subscription, setSubscription] = useState<SubscriptionTier>("free");
 
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/my-tier")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.tier) setSubscription(data.tier as SubscriptionTier);
+      })
+      .catch(() => {});
+  }, [user]);
 
   const chatResetRef = useRef<(() => void) | null>(null);
   // Rate limit warning dismissal state (persists across chat switches)
@@ -386,24 +412,10 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
       return urlParams.get("confirm-migrate-pentestgpt") === "true";
     });
 
-  useEffect(() => {
-    // Save state on desktop
-    chatSidebarStorage.save(chatSidebarOpen, isMobile ?? false);
-
-    // Close sidebar when transitioning from desktop to mobile
-    if (!prevIsMobile.current && isMobile && chatSidebarOpen) {
-      setChatSidebarOpen(false);
-    }
-
-    prevIsMobile.current = isMobile;
-  }, [chatSidebarOpen, isMobile]);
-
   // Cleanup expired drafts on app initialization (once per session)
   useEffect(() => {
     cleanupExpiredDrafts();
   }, []); // Empty dependency array = runs once on mount
-
-
 
   // Listen for URL changes to sync temporary chat state
   useEffect(() => {

@@ -27,7 +27,7 @@ const pointsToDollars = (points: number): number => points / POINTS_PER_DOLLAR;
 
 /**
  * Internal mutation: purge processed_webhooks rows older than cutoff.
- * Stripe only retries within ~72h, so retention of a week is plenty.
+ * Webhooks only retry within ~72h, so retention of a week is plenty.
  * Iterates oldest-first via the implicit by_creation_time ordering.
  */
 export const purgeOldProcessedWebhooks = internalMutation({
@@ -99,8 +99,8 @@ export const checkAndMarkWebhook = mutation({
  * How long a `pending` claim is honored before it can be taken over by a
  * retrying delivery. Sized larger than any reasonable handler runtime so a
  * still-running first attempt is not pre-empted, but small enough that a
- * crashed first attempt unblocks the next Stripe webhook retry within the
- * same retry window (Stripe backs off exponentially over hours).
+ * crashed first attempt unblocks the next webhook retry (which backs off
+ * exponentially over hours).
  */
 const STALE_CLAIM_MS = 10 * 60 * 1000;
 
@@ -217,68 +217,50 @@ export const finalizeWebhookProcessing = mutation({
 // =============================================================================
 
 /**
- * Add credits to user balance (after successful Stripe payment).
- * Idempotent via optional idempotencyKey (Stripe event ID).
+ * Add credits to user balance.
+ * Idempotent via optional idempotencyKey.
  */
 export const addCredits = mutation({
   args: {
     serviceKey: v.string(),
     userId: v.string(),
     amountDollars: v.number(),
-    idempotencyKey: v.optional(v.string()), // Primary dedup key (session-scoped: `cs_<id>`)
-    legacyIdempotencyKey: v.optional(v.string()), // Stripe event ID — checked only to guard pre-deploy webhook retries
-    revenueSource: v.optional(
-      v.union(
-        v.literal("extra_usage_purchase"),
-        v.literal("extra_usage_auto_reload"),
-      ),
-    ),
-    stripeCustomerId: v.optional(v.string()),
-    stripeCheckoutSessionId: v.optional(v.string()),
-    stripePaymentIntentId: v.optional(v.string()),
+    idempotencyKey: v.optional(v.string()),
   },
   returns: v.object({
-    newBalance: v.number(), // Returns dollars
+    newBalance: v.number(),
     alreadyProcessed: v.boolean(),
   }),
   handler: async (ctx, args) => {
     validateServiceKey(args.serviceKey);
 
-    // Idempotency: skip if already processed (prevents double-credit on webhook retries
-    // and across both the post-checkout confirm path and the async webhook path)
-    const sessionKey = args.idempotencyKey;
-    if (sessionKey) {
+    const key = args.idempotencyKey;
+    if (key) {
       const durableExisting = await ctx.db
         .query("processed_checkout_sessions")
-        .withIndex("by_session_key", (q) => q.eq("session_key", sessionKey))
+        .withIndex("by_session_key", (q) => q.eq("session_key", key))
         .unique();
       if (durableExisting) {
         return { newBalance: 0, alreadyProcessed: true };
       }
     }
 
-    const dedupKeys = [args.idempotencyKey, args.legacyIdempotencyKey].filter(
-      (k): k is string => typeof k === "string" && k.length > 0,
-    );
-    for (const key of dedupKeys) {
-      const existing = await ctx.db
+    if (key) {
+      const webhookExisting = await ctx.db
         .query("processed_webhooks")
         .withIndex("by_event_id", (q) => q.eq("event_id", key))
         .first();
-
-      if (existing) {
+      if (webhookExisting) {
         return { newBalance: 0, alreadyProcessed: true };
       }
     }
 
-    // Validate amount
     if (isNaN(args.amountDollars) || args.amountDollars <= 0) {
       throw new Error("Invalid amount: must be a positive number");
     }
 
     const amountPoints = dollarsToPoints(args.amountDollars);
 
-    // Get current settings
     const settings = await ctx.db
       .query("extra_usage")
       .withIndex("by_user_id", (q) => q.eq("user_id", args.userId))
@@ -287,7 +269,6 @@ export const addCredits = mutation({
     const currentBalancePoints = settings?.balance_points ?? 0;
     const newBalancePoints = currentBalancePoints + amountPoints;
 
-    // Update or create settings
     const now = Date.now();
     if (settings) {
       await ctx.db.patch(settings._id, {
@@ -302,7 +283,6 @@ export const addCredits = mutation({
       });
     }
 
-    // Mark processed after success (so retries work if above fails)
     if (args.idempotencyKey) {
       await ctx.db.insert("processed_checkout_sessions", {
         session_key: args.idempotencyKey,
@@ -320,21 +300,12 @@ export const addCredits = mutation({
       userId: args.userId,
       source: "extra_usage",
       sourceEventId:
-        args.stripeCheckoutSessionId ??
-        args.stripePaymentIntentId ??
-        args.idempotencyKey ??
-        `extra_usage:${args.userId}:${Date.now()}`,
-      idempotencyKey:
-        args.idempotencyKey ??
-        args.stripePaymentIntentId ??
-        args.stripeCheckoutSessionId,
+        args.idempotencyKey ?? `extra_usage:${args.userId}:${Date.now()}`,
+      idempotencyKey: args.idempotencyKey,
       grossRevenueDollars: args.amountDollars,
       currency: "usd",
       attributionStrategy: "direct",
-      stripeCustomerId: args.stripeCustomerId,
-      stripeCheckoutSessionId: args.stripeCheckoutSessionId,
-      stripePaymentIntentId: args.stripePaymentIntentId,
-      description: args.revenueSource ?? "extra_usage_purchase",
+      description: "extra_usage_purchase",
     });
 
     convexLogger.info("credits_added", {
@@ -671,7 +642,7 @@ export const getExtraUsageSettings = query({
 /**
  * Update extra usage settings (auto-reload config).
  * Accepts dollars for threshold, converts to points for storage.
- * Auto-reload amount stays in dollars (for Stripe charges).
+ * Auto-reload amount stays in dollars.
  */
 export const updateExtraUsageSettings = mutation({
   args: {
@@ -747,7 +718,7 @@ export const updateExtraUsageSettings = mutation({
       );
     }
     if (args.autoReloadAmountDollars !== undefined) {
-      // Keep in dollars for Stripe charges
+      // Keep in dollars
       updateData.auto_reload_amount_dollars = args.autoReloadAmountDollars;
     }
     if (args.monthlyCapDollars !== undefined) {

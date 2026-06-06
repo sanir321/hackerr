@@ -704,7 +704,7 @@ export const saveFile = action({
         });
       }
       actingUserId = user.subject;
-      entitlements = parseEntitlements(user.entitlements);
+      entitlements = (user.entitlements ?? []) as string[];
 
       // Security: Only backend (service key) flows can directly set skipTokenValidation
       // Client can use mode="agent" to skip validation

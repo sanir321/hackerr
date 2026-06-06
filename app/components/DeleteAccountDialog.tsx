@@ -81,7 +81,7 @@ export const DeleteAccountDialog = ({
     try {
       // 1) Delete all Convex data first
       await deleteAllUserData({});
-      // 2) Cancel Stripe subs, remove WorkOS org(s), and delete WorkOS user server-side
+      // 2) Remove WorkOS org(s), and delete WorkOS user server-side
       const res = await fetch("/api/delete-account", { method: "POST" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

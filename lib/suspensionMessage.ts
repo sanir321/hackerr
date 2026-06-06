@@ -1,8 +1,7 @@
 /**
- * Build a user-facing suspension message from a Stripe customer's
- * `blocked_reason` metadata (set by the fraud webhook).
- *
- * The raw reason categories come from app/api/fraud/webhook/route.ts:
+ * Build a user-facing suspension message from a suspension reason.
+
+ * The raw reason categories:
  *   - early_fraud_warning:<fraud_type>
  *   - dispute_fraudulent:<dispute_id>
  *   - dispute_billing_hold:<dispute_id>

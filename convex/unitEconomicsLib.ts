@@ -183,10 +183,6 @@ export async function recordPaidStartEventInternal(
     billingIntervalCount?: number;
     quantity?: number;
     userCount?: number;
-    stripeCustomerId?: string;
-    stripeSubscriptionId?: string;
-    stripeInvoiceId?: string;
-    stripePriceId?: string;
   },
 ): Promise<{ alreadyRecorded: boolean }> {
   const idempotencyKey =
@@ -230,10 +226,6 @@ export async function recordPaidStartEventInternal(
     billing_interval_count: args.billingIntervalCount,
     quantity: args.quantity,
     user_count: args.userCount,
-    stripe_customer_id: args.stripeCustomerId,
-    stripe_subscription_id: args.stripeSubscriptionId,
-    stripe_invoice_id: args.stripeInvoiceId,
-    stripe_price_id: args.stripePriceId,
     created_at: Date.now(),
   });
 
@@ -266,12 +258,6 @@ export async function recordRevenueEventInternal(
     currency?: string;
     occurredAt?: number;
     attributionStrategy: UnitEconomicsAttributionStrategy;
-    stripeCustomerId?: string;
-    stripeSubscriptionId?: string;
-    stripeInvoiceId?: string;
-    stripeCheckoutSessionId?: string;
-    stripePaymentIntentId?: string;
-    stripePriceId?: string;
     plan?: string;
     quantity?: number;
     userCount?: number;
@@ -316,12 +302,6 @@ export async function recordRevenueEventInternal(
     currency: args.currency ?? "usd",
     occurred_at: occurredAt,
     attribution_strategy: args.attributionStrategy,
-    stripe_customer_id: args.stripeCustomerId,
-    stripe_subscription_id: args.stripeSubscriptionId,
-    stripe_invoice_id: args.stripeInvoiceId,
-    stripe_checkout_session_id: args.stripeCheckoutSessionId,
-    stripe_payment_intent_id: args.stripePaymentIntentId,
-    stripe_price_id: args.stripePriceId,
     plan: args.plan,
     quantity: args.quantity,
     user_count: args.userCount,

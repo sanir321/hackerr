@@ -143,29 +143,6 @@ export const TeamExtraUsageSection = () => {
     );
   };
 
-  const handlePurchase = async (amountDollars: number) => {
-    setBusy(true);
-    try {
-      const res = await fetch("/api/team/extra-usage/purchase", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ amountDollars }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || "Failed to start checkout");
-      }
-      window.location.href = data.url;
-    } catch (err) {
-      console.error("Failed to start checkout:", err);
-      toast.error(
-        err instanceof Error ? err.message : "Failed to start checkout",
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const handleSaveSpendingLimit = async (limitDollars: number | null) => {
     const ok = await updatePool({ monthlyCapDollars: limitDollars });
     if (!ok) return;
@@ -420,12 +397,6 @@ export const TeamExtraUsageSection = () => {
       <BuyExtraUsageDialog
         open={showBuyDialog}
         onOpenChange={setShowBuyDialog}
-        onPurchase={handlePurchase}
-        isLoading={busy}
-        title="Buy team extra usage"
-        description="Fund a shared pool that team members can use when they hit the team subscription limit."
-        lineItemLabel="Team extra usage"
-        paymentMethodMode="checkout"
       />
 
       <AdjustSpendingLimitDialog

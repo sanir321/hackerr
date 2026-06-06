@@ -247,7 +247,7 @@ async function createTestUsers() {
   console.log(chalk.cyan("   pnpm test:e2e:setup"));
 
   console.log("\n3. For subscription tiers (Pro/Ultra), you may need to:");
-  console.log("   a. Set up Stripe subscriptions manually, or");
+
   console.log("   b. Create organizations with proper entitlements in WorkOS");
 
   console.log(chalk.bold.green("\n✨ Done!\n"));

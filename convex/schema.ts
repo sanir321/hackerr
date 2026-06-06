@@ -144,13 +144,12 @@ export default defineSchema({
   // Extra usage (created when user enables extra usage)
   // Note: Most monetary values stored in POINTS for precision (1 point = $0.0001, matching rate limiting)
   // This avoids precision loss when deducting sub-cent amounts from balance.
-  // Exception: auto_reload_amount_dollars is stored in dollars since it's used directly for Stripe charges.
   extra_usage: defineTable({
     user_id: v.string(),
     balance_points: v.number(),
     auto_reload_enabled: v.optional(v.boolean()),
     auto_reload_threshold_points: v.optional(v.number()),
-    auto_reload_amount_dollars: v.optional(v.number()), // Stored in dollars for Stripe
+    auto_reload_amount_dollars: v.optional(v.number()),
     monthly_cap_points: v.optional(v.number()),
     monthly_spent_points: v.optional(v.number()),
     monthly_reset_date: v.optional(v.string()),
@@ -251,10 +250,6 @@ export default defineSchema({
       v.literal("withheld"),
     ),
     source: v.optional(v.string()),
-    stripe_checkout_session_id: v.optional(v.string()),
-    stripe_customer_id: v.optional(v.string()),
-    stripe_subscription_id: v.optional(v.string()),
-    stripe_invoice_id: v.optional(v.string()),
     requested_plan: v.optional(v.string()),
     converted_tier: v.optional(
       v.union(
@@ -271,10 +266,7 @@ export default defineSchema({
   })
     .index("by_referred_user_id", ["referred_user_id"])
     .index("by_referrer_user_id", ["referrer_user_id"])
-    .index("by_referral_code", ["referral_code"])
-    .index("by_stripe_checkout_session_id", ["stripe_checkout_session_id"])
-    .index("by_stripe_customer_id", ["stripe_customer_id"])
-    .index("by_stripe_subscription_id", ["stripe_subscription_id"]),
+    .index("by_referral_code", ["referral_code"]),
 
   referral_rewards: defineTable({
     idempotency_key: v.string(),
@@ -290,10 +282,6 @@ export default defineSchema({
     amount_dollars: v.number(),
     amount_units: v.optional(v.number()),
     reason: v.optional(v.string()),
-    stripe_checkout_session_id: v.optional(v.string()),
-    stripe_customer_id: v.optional(v.string()),
-    stripe_subscription_id: v.optional(v.string()),
-    stripe_invoice_id: v.optional(v.string()),
     created_at: v.number(),
     notification_seen_at: v.optional(v.number()),
   })
@@ -309,11 +297,9 @@ export default defineSchema({
       v.literal("dispute_fraudulent"),
       v.literal("dispute_billing_hold"),
     ),
-    source: v.literal("stripe"),
+    source: v.string(),
     source_id: v.string(),
     source_reason: v.optional(v.string()),
-    stripe_customer_id: v.string(),
-    stripe_charge_id: v.optional(v.string()),
     workos_organization_id: v.optional(v.string()),
     created_at: v.number(),
     updated_at: v.number(),
@@ -327,8 +313,7 @@ export default defineSchema({
       "status",
       "source_created_at",
     ])
-    .index("by_user_and_source", ["user_id", "source_id"])
-    .index("by_customer_and_status", ["stripe_customer_id", "status"]),
+    .index("by_user_and_source", ["user_id", "source_id"]),
 
   memories: defineTable({
     user_id: v.string(),
@@ -485,12 +470,6 @@ export default defineSchema({
       v.literal("split_evenly"),
       v.literal("organization_pool"),
     ),
-    stripe_customer_id: v.optional(v.string()),
-    stripe_subscription_id: v.optional(v.string()),
-    stripe_invoice_id: v.optional(v.string()),
-    stripe_checkout_session_id: v.optional(v.string()),
-    stripe_payment_intent_id: v.optional(v.string()),
-    stripe_price_id: v.optional(v.string()),
     plan: v.optional(v.string()),
     quantity: v.optional(v.number()),
     user_count: v.optional(v.number()),
@@ -540,10 +519,6 @@ export default defineSchema({
     billing_interval_count: v.optional(v.number()),
     quantity: v.optional(v.number()),
     user_count: v.optional(v.number()),
-    stripe_customer_id: v.optional(v.string()),
-    stripe_subscription_id: v.optional(v.string()),
-    stripe_invoice_id: v.optional(v.string()),
-    stripe_price_id: v.optional(v.string()),
     created_at: v.number(),
   })
     .index("by_idempotency_key", ["idempotency_key"])
@@ -616,7 +591,7 @@ export default defineSchema({
     .index("by_user_day", ["user_id", "day"])
     .index("by_org_day", ["organization_id", "day"]),
 
-  // Webhook idempotency (prevents double-crediting on Stripe retries)
+  // Webhook idempotency
   processed_webhooks: defineTable({
     event_id: v.string(),
     processed_at: v.number(),
