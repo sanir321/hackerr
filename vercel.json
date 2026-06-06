@@ -1,4 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "next build --no-lint"
+  "buildCommand": "next build --no-lint",
+  "installCommand": "pnpm install --no-frozen-lockfile"
 }
