@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useGlobalState } from "@/app/contexts/GlobalState";
 import { TodoPanel } from "../TodoPanel";
-import type { ChatStatus } from "@/types";
+import type { ChatStatus, SandboxPreference } from "@/types";
 import { FileUploadPreview } from "../FileUploadPreview";
 import { QueuedMessagesPanel } from "../QueuedMessagesPanel";
 import { ScrollToBottomButton } from "../ScrollToBottomButton";
@@ -145,7 +145,7 @@ export const ChatInput = ({
           <div className="flex px-1 pb-2 min-h-9">
             <SandboxSelector
               value={sandboxPreference}
-              onChange={setSandboxPreference}
+              onChange={(v) => setSandboxPreference(v as SandboxPreference)}
             />
           </div>
         )}
@@ -206,7 +206,7 @@ export const ChatInput = ({
           >
             <SandboxSelector
               value={sandboxPreference}
-              onChange={setSandboxPreference}
+              onChange={(v) => setSandboxPreference(v as SandboxPreference)}
             />
           </div>
         )}
