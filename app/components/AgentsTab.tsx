@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Save, ShieldAlert, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { useGlobalState } from "@/app/contexts/GlobalState";
-import type { QueueBehavior } from "@/types/chat";
+import type { QueueBehavior, SandboxPreference } from "@/types/chat";
 import { SandboxSelector } from "@/app/components/SandboxSelector";
 import {
   type GuardrailConfigUI,
@@ -140,7 +140,7 @@ const AgentsTab = () => {
           <div className="w-full sm:w-auto">
             <SandboxSelector
               value={sandboxPreference}
-              onChange={setSandboxPreference}
+              onChange={(v) => setSandboxPreference(v as SandboxPreference)}
               disabled={false}
               size="md"
             />
