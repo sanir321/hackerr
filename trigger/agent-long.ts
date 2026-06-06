@@ -683,7 +683,7 @@ export const agentLongTask = task({
         { isTemporary: !!temporary, regenerate },
       );
 
-      const uploadBasePath = getUploadBasePath(sandboxPreference);
+      const uploadBasePath = getUploadBasePath();
       const messagesForProcessing =
         localDesktopAttachmentsPrepared && messages.length > 0
           ? messages
@@ -700,7 +700,7 @@ export const agentLongTask = task({
           subscription,
           uploadBasePath,
           modelOverride: selectedModelOverride,
-          allowLocalDesktopFiles: sandboxPreference === "desktop",
+          allowLocalDesktopFiles: false,
         });
 
       if (!processedMessages.length) {

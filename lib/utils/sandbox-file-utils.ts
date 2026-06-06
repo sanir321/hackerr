@@ -40,12 +40,7 @@ const logLocalAttachmentDebug = (
  * E2B uses /home/user/upload; any local connection uses /tmp/umbraa-upload
  * since the host machine may not have /home/user (e.g. macOS in dangerous mode).
  */
-export const getUploadBasePath = (
-  sandboxPreference: SandboxPreference | undefined,
-): string =>
-  sandboxPreference === "e2b" || !sandboxPreference
-    ? "/home/user/upload"
-    : "/tmp/umbraa-upload";
+export const getUploadBasePath = (): string => "/home/user/upload";
 
 const getLastUserMessageIndex = (messages: UIMessage[]): number => {
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -90,7 +85,7 @@ export const sanitizeFilenameForTerminal = (filename: string): string => {
 export const collectSandboxFiles = (
   updatedMessages: UIMessage[],
   sandboxFiles: SandboxFile[],
-  uploadBasePath: string = getUploadBasePath(undefined),
+  uploadBasePath: string = getUploadBasePath(),
   options: { allowLocalDesktopFiles?: boolean } = {},
 ): void => {
   const lastUserIdx = getLastUserMessageIndex(updatedMessages);
@@ -210,61 +205,8 @@ export const rewriteSandboxFilePathsInMessages = <T extends { parts?: any[] }>(
 
 export const prepareLocalDesktopAttachmentsForTrigger = (
   messages: UIMessage[],
-  uploadBasePath: string = getUploadBasePath("desktop"),
 ): { messages: UIMessage[]; sandboxFiles: SandboxFile[] } => {
-  const clonedMessages =
-    typeof structuredClone === "function"
-      ? structuredClone(messages)
-      : JSON.parse(JSON.stringify(messages));
-  const preparedMessages = stripLocalDesktopSourcePaths(
-    clonedMessages,
-  ) as UIMessage[];
-  const sandboxFiles: SandboxFile[] = [];
-  const lastUserIdx = getLastUserMessageIndex(messages);
-
-  messages.forEach((message, messageIndex) => {
-    if (message.role !== "user" || !message.parts) return;
-
-    const tags: string[] = [];
-    (message.parts as any[]).forEach((part) => {
-      if (
-        part?.type !== "file" ||
-        part.storage !== "local-desktop" ||
-        !part.localPath
-      ) {
-        return;
-      }
-      const sanitizedName = sanitizeFilenameForTerminal(
-        part.name || part.filename || "file",
-      );
-      const localPath = `${uploadBasePath}/${sanitizedName}`;
-      if (messageIndex === lastUserIdx) {
-        sandboxFiles.push({
-          kind: "localPath",
-          path: part.localPath,
-          localPath,
-        });
-      }
-      tags.push(
-        `<attachment filename="${sanitizedName}" local_path="${localPath}" />`,
-      );
-    });
-
-    if (tags.length > 0) {
-      (preparedMessages[messageIndex].parts as any[]).push({
-        type: "text",
-        text: tags.join("\n"),
-      });
-    }
-  });
-
-  logLocalAttachmentDebug("prepared-trigger-local-files", {
-    fileCount: sandboxFiles.length,
-    scrubbedHasLocalPath:
-      JSON.stringify(preparedMessages).includes("localPath"),
-  });
-
-  return { messages: preparedMessages, sandboxFiles };
+  return { messages, sandboxFiles: [] };
 };
 
 /**

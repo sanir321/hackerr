@@ -247,21 +247,6 @@ export const useChatHandlers = ({
       }
 
       const currentChatMode = chatModeRef.current;
-      const hasLocalDesktopFiles = uploadedFiles.some(
-        (file) => file.storage === "local-desktop",
-      );
-      if (
-        hasLocalDesktopFiles &&
-        (!isAgentMode(currentChatMode) ||
-          sandboxPreferenceRef.current !== "desktop")
-      ) {
-        toast.error("Local attachments require desktop Agent mode", {
-          description:
-            "Switch back to Agent mode with the desktop sandbox or reattach the file for upload.",
-        });
-        return;
-      }
-
       // If streaming in Agent mode, check queue behavior
       if (status === "streaming") {
         const validFiles = uploadedFiles

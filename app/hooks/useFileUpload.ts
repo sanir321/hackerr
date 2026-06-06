@@ -108,10 +108,7 @@ export const useFileUpload = (mode: ChatMode = "ask") => {
     api.s3Actions.generateS3UploadUrlAction,
   );
 
-  const shouldUseLocalDesktopAttachments =
-    isTauriEnvironment() &&
-    isAgentMode(mode) &&
-    sandboxPreference === "desktop";
+  const shouldUseLocalDesktopAttachments = false;
 
   // Helper to show rate limit warning (throttled to once per minute)
   const showRateLimitWarning = useCallback((rateLimit: RateLimitInfo) => {

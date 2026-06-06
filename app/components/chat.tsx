@@ -40,7 +40,7 @@ import {
 import { isTauriEnvironment } from "@/app/hooks/useTauri";
 import { stripAgentLongHeartbeatPartsFromMessages } from "@/lib/chat/agent-long-heartbeat";
 import { toast } from "sonner";
-import type { Todo, ChatMessage, ChatMode } from "@/types";
+import type { Todo, ChatMessage, ChatMode, SandboxPreference } from "@/types";
 import { coerceSelectedModel } from "@/types/chat";
 import type { ContextUsageData } from "./ContextUsageIndicator";
 import { shouldTreatAsMerge } from "@/lib/utils/todo-utils";
@@ -560,7 +560,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
           }
 
           // Update sandbox preference to match actual sandbox used
-          setSandboxPreference(fallbackData.actualSandbox);
+          setSandboxPreference(fallbackData.actualSandbox as unknown as SandboxPreference);
 
           // Show toast notification
           const message =
@@ -768,20 +768,16 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
       setSandboxPreference("e2b");
       hasInitializedSandboxRef.current = true;
     } else if (storedSandboxType === "desktop") {
-      // Desktop preference — validate that a desktop connection exists
-      if (localConnections !== undefined) {
-        const desktopExists = localConnections.some((conn) => conn.isDesktop);
-        setSandboxPreference(desktopExists ? "desktop" : "e2b");
-        hasInitializedSandboxRef.current = true;
-      }
-      // If localConnections is still loading, wait for next render
+      // Desktop preference — no longer supported, reset to cloud
+      setSandboxPreference("e2b");
+      hasInitializedSandboxRef.current = true;
     } else if (localConnections !== undefined) {
       // For remote connectionIds, validate the connection still exists
       const connectionExists = localConnections.some(
         (conn) => conn.connectionId === storedSandboxType,
       );
       if (connectionExists) {
-        setSandboxPreference(storedSandboxType);
+        setSandboxPreference(storedSandboxType as unknown as SandboxPreference);
       } else {
         // Stale connection — fall back to cloud
         setSandboxPreference("e2b");

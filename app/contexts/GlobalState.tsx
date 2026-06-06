@@ -122,7 +122,7 @@ interface GlobalStateType {
   hasLocalSandbox: boolean;
 
   // The sandbox preference to use for free agent mode (desktop or first remote connection ID)
-  defaultLocalSandboxPreference: SandboxPreference | null;
+  defaultLocalSandboxPreference: string | null;
 
   // Model selection
   selectedModel: SelectedModel;
@@ -352,15 +352,11 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
     [desktopBridgeActive, localConnections],
   );
 
-  const defaultLocalSandboxPreference =
-    useMemo<SandboxPreference | null>(() => {
-      if (desktopBridgeActive) return "desktop";
-      const firstRemote = localConnections?.find((c) => !c.isDesktop);
-      if (firstRemote) return firstRemote.connectionId;
-      const firstDesktop = localConnections?.find((c) => c.isDesktop);
-      if (firstDesktop) return "desktop";
-      return null;
-    }, [desktopBridgeActive, localConnections]);
+  const defaultLocalSandboxPreference = useMemo<string | null>(() => {
+    const firstRemote = localConnections?.find((c) => !c.isDesktop);
+    if (firstRemote) return firstRemote.connectionId;
+    return null;
+  }, [localConnections]);
 
   // Persist queue behavior to localStorage
   useEffect(() => {

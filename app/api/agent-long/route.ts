@@ -103,7 +103,6 @@ export async function POST(req: NextRequest) {
       let { messages: preparedMessages, sandboxFiles } =
         prepareLocalDesktopAttachmentsForTrigger(
           requestMessages,
-          getUploadBasePath("e2b"),
         );
       if (sandboxFiles.length > 0) {
         const sandboxManager = new HybridSandboxManager(

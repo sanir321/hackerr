@@ -260,7 +260,7 @@ export const createChatHandler = () => {
           : null;
 
       const uploadBasePath = isAgentMode(mode)
-        ? getUploadBasePath(sandboxPreference)
+        ? getUploadBasePath()
         : undefined;
 
       let { processedMessages, selectedModel, sandboxFiles } =

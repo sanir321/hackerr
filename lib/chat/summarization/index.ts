@@ -87,16 +87,8 @@ const saveTranscriptToSandbox = async (
       // Save as structured JSON — model messages (mid-stream, with separate
       // tool-call/tool-result parts) when available, otherwise UI messages
       const content = JSON.stringify(modelMessages ?? messages, null, 2);
-      if (isE2BSandbox(sandbox)) {
-        // E2B uploads via HTTP — no shell argument limits, string is fine
-        await sandbox.files.write(path, content);
-      } else {
-        // ConvexSandbox/TauriSandbox: pass as ArrayBuffer to trigger binary
-        // chunking in ConvexSandbox, avoiding shell argument size limits that
-        // occur when large strings are embedded in heredoc commands.
-        const buf = new TextEncoder().encode(content);
-        await sandbox.files.write(path, buf.buffer as ArrayBuffer);
-      }
+      // E2B uploads via HTTP — no shell argument limits, string is fine
+      await sandbox.files.write(path, content);
 
       return path;
     } catch (error) {
