@@ -25,7 +25,7 @@ import {
 import { Plus } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
-interface CustomizeHackerAIDialogProps {
+interface CustomizeUmbraaDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -50,10 +50,10 @@ const personalityOptions = [
   { value: "nerd", label: "Nerd", description: "Exploratory and enthusiastic" },
 ];
 
-export const CustomizeHackerAIDialog = ({
+export const CustomizeUmbraaDialog = ({
   open,
   onOpenChange,
-}: CustomizeHackerAIDialogProps) => {
+}: CustomizeUmbraaDialogProps) => {
   const [nickname, setNickname] = useState("");
   const [occupation, setOccupation] = useState("");
   const [personality, setPersonality] = useState("default");
@@ -76,7 +76,6 @@ export const CustomizeHackerAIDialog = ({
     open ? {} : "skip",
   );
 
-  // Load existing customization data
   useEffect(() => {
     if (userCustomization) {
       setNickname(userCustomization.nickname || "");
@@ -96,14 +95,13 @@ export const CustomizeHackerAIDialog = ({
   };
 
   const handleSave = async () => {
-    // Check for character limit violations
     if (
       isNicknameOverLimit ||
       isOccupationOverLimit ||
       isTraitsOverLimit ||
       isAdditionalInfoOverLimit
     ) {
-      return; // Don't save if any field exceeds the limit
+      return;
     }
 
     try {
@@ -134,7 +132,6 @@ export const CustomizeHackerAIDialog = ({
   };
 
   const handleCancel = () => {
-    // Reset form to original values
     if (userCustomization) {
       setNickname(userCustomization.nickname || "");
       setOccupation(userCustomization.occupation || "");
@@ -142,7 +139,6 @@ export const CustomizeHackerAIDialog = ({
       setTraitsText(userCustomization.traits || "");
       setAdditionalInfo(userCustomization.additional_info || "");
     } else {
-      // Reset to empty values if no existing customization
       setNickname("");
       setOccupation("");
       setPersonality("default");
@@ -164,9 +160,8 @@ export const CustomizeHackerAIDialog = ({
 
         <div className="flex-1 overflow-y-auto pb-3">
           <div className="space-y-5 pb-3">
-            {/* Nickname */}
             <div className="flex flex-col gap-2 px-1">
-              <Label htmlFor="nickname">What should HackerAI call you?</Label>
+              <Label htmlFor="nickname">What should Umbraa call you?</Label>
               <TextareaAutosize
                 id="nickname"
                 placeholder="Nickname"
@@ -182,7 +177,6 @@ export const CustomizeHackerAIDialog = ({
               )}
             </div>
 
-            {/* Occupation */}
             <div className="flex flex-col gap-2 px-1">
               <Label htmlFor="occupation">What do you do?</Label>
               <TextareaAutosize
@@ -200,11 +194,10 @@ export const CustomizeHackerAIDialog = ({
               )}
             </div>
 
-            {/* Personality */}
             <div className="flex flex-col gap-2 px-1">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <Label className="sm:flex-shrink-0">
-                  What personality should HackerAI have?
+                  What personality should Umbraa have?
                 </Label>
                 <Select value={personality} onValueChange={setPersonality}>
                   <SelectTrigger className="w-full sm:w-auto">
@@ -238,9 +231,8 @@ export const CustomizeHackerAIDialog = ({
               </div>
             </div>
 
-            {/* Traits */}
             <div className="flex flex-col gap-2 px-1">
-              <Label>What traits should HackerAI have?</Label>
+              <Label>What traits should Umbraa have?</Label>
 
               <TextareaAutosize
                 placeholder="Describe or select traits"
@@ -256,7 +248,6 @@ export const CustomizeHackerAIDialog = ({
                 </div>
               )}
 
-              {/* Predefined traits */}
               <div className="flex flex-wrap gap-2 mt-2">
                 {predefinedTraits.map((trait) => (
                   <button
@@ -272,10 +263,9 @@ export const CustomizeHackerAIDialog = ({
               </div>
             </div>
 
-            {/* Additional Info */}
             <div className="flex flex-col gap-3 px-1">
               <Label htmlFor="additional-info">
-                Anything else HackerAI should know about you?
+                Anything else Umbraa should know about you?
               </Label>
               <TextareaAutosize
                 id="additional-info"

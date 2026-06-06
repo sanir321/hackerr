@@ -14,7 +14,7 @@ import {
   waitForSandboxReady,
   getSandboxDiagnostics,
 } from "./utils/sandbox-health";
-import { isE2BSandbox, isCentrifugoSandbox } from "./utils/sandbox-types";
+import { isE2BSandbox } from "./utils/sandbox-types";
 import {
   buildSandboxCommandOptions,
   augmentCommandPath,
@@ -124,7 +124,7 @@ In using these tools, adhere to the following guidelines:
         .optional()
         .default(false)
         .describe(
-          "When true, opens a PTY and returns a reusable `session` ID. Use `interact_terminal_session` tool to continue the session with send/wait/view/kill actions. Use for anything that prompts: REPLs (python, node, mysql), SSH, sudo, confirmations, interactive installers. E2B and local (Centrifugo) sandboxes only.",
+           "When true, opens a PTY and returns a reusable `session` ID. Use `interact_terminal_session` tool to continue the session with send/wait/view/kill actions. Use for anything that prompts: REPLs (python, node, mysql), SSH, sudo, confirmations, interactive installers. E2B sandboxes only.",
         ),
     }),
     execute: async (
@@ -212,32 +212,15 @@ In using these tools, adhere to the following guidelines:
       if (interactive) {
         try {
           const { sandbox } = await sandboxManager.getSandbox();
-          const isCentrifugo = isCentrifugoSandbox(sandbox);
           const isE2B = isE2BSandbox(sandbox);
 
-          if (!isE2B && !isCentrifugo) {
+          if (!isE2B) {
             return {
               result: {
                 output: "",
                 exitCode: 1,
                 error:
-                  "Interactive PTY requires E2B or local (Centrifugo) sandbox.",
-              },
-            };
-          }
-
-          const supportsCentrifugoPty =
-            !isCentrifugo ||
-            typeof sandbox.supportsPty !== "function" ||
-            sandbox.supportsPty();
-
-          if (!supportsCentrifugoPty) {
-            return {
-              result: {
-                output: "",
-                exitCode: 1,
-                error:
-                  "Interactive terminal sessions are unavailable on this local connection. Use non-interactive terminal commands instead.",
+                  "Interactive PTY requires E2B sandbox.",
               },
             };
           }
@@ -267,16 +250,6 @@ In using these tools, adhere to the following guidelines:
             cols,
             rows,
             createHandle: async () => {
-              if (isCentrifugo) {
-                const { createCentrifugoPtyHandle } =
-                  await import("./utils/centrifugo-pty-adapter");
-                return createCentrifugoPtyHandle(sandbox, {
-                  command,
-                  cols,
-                  rows,
-                  envs: caidoEnvVars,
-                });
-              }
               return createE2BPtyHandle(sandbox, {
                 cols,
                 rows,
@@ -290,13 +263,10 @@ In using these tools, adhere to the following guidelines:
           activePtySessionId = session.sessionId;
 
           // For E2B, the PTY starts a bare shell — fire the command + Enter
-          // so the shell actually runs it. For Centrifugo, the command is
-          // passed in pty_create and the local runner spawns it directly.
-          if (!isCentrifugo) {
-            await session.handle.sendInput(
-              new TextEncoder().encode(command + "\n"),
-            );
-          }
+          // so the shell actually runs it.
+          await session.handle.sendInput(
+            new TextEncoder().encode(command + "\n"),
+          );
           session.lastActivityAt = Date.now();
 
           // Stream output chunks as they arrive. Resolve early on a brief
@@ -365,7 +335,7 @@ In using these tools, adhere to the following guidelines:
               output: "",
               exitCode: 1,
               error:
-                "Sandbox is unavailable after repeated health check failures. Do NOT retry any terminal or sandbox commands. Inform the user that the sandbox could not be reached and suggest they wait a moment and try again, or delete the sandbox in Settings > Data Controls. If the issue persists, contact HackerAI support.",
+                "Sandbox is unavailable after repeated health check failures. Do NOT retry any terminal or sandbox commands. Inform the user that the sandbox could not be reached and suggest they wait a moment and try again, or delete the sandbox in Settings > Data Controls. If the issue persists, contact Umbraa support.",
             },
           };
         }
@@ -395,7 +365,7 @@ In using these tools, adhere to the following guidelines:
                   output: "",
                   exitCode: 1,
                   error:
-                    "Sandbox is unavailable after repeated health check failures. Do NOT retry any terminal or sandbox commands. Inform the user that the sandbox could not be reached and suggest they wait a moment and try again, or delete the sandbox in Settings > Data Controls. If the issue persists, contact HackerAI support.",
+                    "Sandbox is unavailable after repeated health check failures. Do NOT retry any terminal or sandbox commands. Inform the user that the sandbox could not be reached and suggest they wait a moment and try again, or delete the sandbox in Settings > Data Controls. If the issue persists, contact Umbraa support.",
                 },
               };
             }
@@ -495,20 +465,7 @@ In using these tools, adhere to the following guidelines:
               // from the killed process might trigger retries
               resolved = true;
 
-              if (isCentrifugoSandbox(sandboxInstance)) {
-                const result = handler ? handler.getResult() : { output: "" };
-                if (handler) {
-                  handler.cleanup();
-                }
-                resolve({
-                  result: {
-                    output: result.output,
-                    exitCode: 130,
-                    error: "Command execution aborted by user",
-                  },
-                });
-                return;
-              }
+              // All sandboxes are E2B now - proceed with termination
 
               // Try to get PID from execution object first (cheap, no shell call)
               if (!processId && execution && (execution as any)?.pid) {
@@ -623,9 +580,7 @@ In using these tools, adhere to the following guidelines:
                   },
               caidoEnvVars,
             );
-            const runOptions = isCentrifugoSandbox(sandboxInstance)
-              ? { ...commonOptions, signal: abortSignal }
-              : commonOptions;
+            const runOptions = commonOptions;
 
             // Determine if an error is a permanent command failure (don't retry)
             // vs a transient sandbox issue (do retry)

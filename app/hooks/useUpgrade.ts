@@ -36,7 +36,7 @@ export const useUpgrade = () => {
       `Upgrade request: ${user.email ?? user.id}`,
     );
     const body = encodeURIComponent(
-      `User ID: ${user.id}\nEmail: ${user.email ?? "N/A"}\n\nPlease upgrade my subscription tier.\n\nTo upgrade, run:\ncurl -X POST https://hackerai.co/api/admin/set-tier \\\n  -H "x-api-key: YOUR_ADMIN_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"userId":"${user.id}","tier":"pro"}'
+      `User ID: ${user.id}\nEmail: ${user.email ?? "N/A"}\n\nPlease upgrade my subscription tier.\n\nTo upgrade, run:\ncurl -X POST https://umbraa.ai/api/admin/set-tier \\\n  -H "x-api-key: YOUR_ADMIN_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"userId":"${user.id}","tier":"pro"}'
 `,
     );
     window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;

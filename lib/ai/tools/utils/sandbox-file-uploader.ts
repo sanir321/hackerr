@@ -4,7 +4,7 @@ import { ConvexError } from "convex/values";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import type { AnySandbox } from "@/types";
-import { isCentrifugoSandbox, isE2BSandbox } from "./sandbox-types";
+import { isE2BSandbox } from "./sandbox-types";
 import { buildSandboxCommandOptions } from "./sandbox-command-options";
 import { generateS3UploadUrl } from "@/convex/s3Utils";
 import { getConvexClient } from "@/lib/db/convex-client";
@@ -15,7 +15,7 @@ const DEFAULT_MEDIA_TYPE = "application/octet-stream";
 const MAX_GENERATED_FILE_SIZE_MB =
   MAX_GENERATED_FILE_SIZE_BYTES / (1024 * 1024);
 const SANDBOX_UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
-const SANDBOX_UPLOAD_STATUS_MARKER = "__HACKERAI_UPLOAD_EXIT_CODE__:";
+const SANDBOX_UPLOAD_STATUS_MARKER = "__UMBRAA_UPLOAD_EXIT_CODE__:";
 
 export type UploadedFileInfo = {
   url: string;
@@ -48,7 +48,7 @@ function shellQuote(value: string): string {
 }
 
 function shouldTryWindowsFileSizeFallback(sandbox: AnySandbox): boolean {
-  return isCentrifugoSandbox(sandbox) && sandbox.isWindows();
+  return false;
 }
 
 function formatFileSizeFailure(
@@ -187,8 +187,8 @@ function assertSandboxFileSizeAllowed(fileName: string, size: number): void {
   );
 }
 
-function getSandboxLogType(sandbox: AnySandbox): "e2b" | "centrifugo" {
-  return isE2BSandbox(sandbox) ? "e2b" : "centrifugo";
+function getSandboxLogType(sandbox: AnySandbox): "e2b" {
+  return "e2b";
 }
 
 function errorToLog(error: unknown) {
@@ -286,23 +286,6 @@ async function uploadGeneratedFileFromSandboxToUrl(args: {
 }): Promise<void> {
   const { sandbox, fullPath, uploadUrl, mediaType } = args;
   const fileName = getFileNameFromPath(fullPath);
-
-  if (!isE2BSandbox(sandbox) && sandbox.files?.uploadToUrl) {
-    try {
-      await sandbox.files.uploadToUrl(fullPath, uploadUrl, mediaType);
-      return;
-    } catch (error) {
-      logger.warn("sandbox_generated_file_native_upload_failed", {
-        event: "sandbox_generated_file_native_upload_failed",
-        service: "chat-handler",
-        sandbox_type: getSandboxLogType(sandbox),
-        file_name: fileName,
-        file_path: fullPath,
-        media_type: mediaType,
-        error: errorToLog(error),
-      });
-    }
-  }
 
   let result: SandboxCommandResult;
   const uploadCommand = `curl -fsSL -X PUT -H ${shellQuote(`Content-Type: ${mediaType}`)} --data-binary @${shellQuote(fullPath)} ${shellQuote(uploadUrl)}`;

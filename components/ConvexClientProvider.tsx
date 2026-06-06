@@ -3,21 +3,9 @@
 import { ReactNode, useState } from "react";
 import { ConvexReactClient, ConvexProviderWithAuth } from "convex/react";
 import { AuthKitProvider } from "@workos-inc/authkit-nextjs/components";
+import { useAuthFromAuthKit } from "@/lib/auth/use-auth-from-authkit";
 
 const noop = () => {};
-
-// Mock Convex auth hook — always returns a token so Convex considers us authenticated.
-// Queries will fail server-side (invalid JWT), but components handle missing data gracefully.
-function useMockConvexAuth() {
-  return {
-    isLoading: false,
-    isAuthenticated: true,
-    fetchAccessToken: async (args?: { forceRefreshToken?: boolean }) => {
-      if (args?.forceRefreshToken) return null; // Don't retry after rejection
-      return "mock-convex-token";
-    },
-  };
-}
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
   const [convex] = useState(() => {
@@ -27,7 +15,7 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthKitProvider onSessionExpired={noop}>
-      <ConvexProviderWithAuth client={convex} useAuth={useMockConvexAuth}>
+      <ConvexProviderWithAuth client={convex} useAuth={useAuthFromAuthKit}>
         {children}
       </ConvexProviderWithAuth>
     </AuthKitProvider>

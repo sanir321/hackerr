@@ -1,10 +1,10 @@
-# HackerAI Desktop
+# Umbraa Desktop
 
-Native desktop application for HackerAI built with [Tauri](https://tauri.app/).
+Native desktop application for Umbraa built with [Tauri](https://tauri.app/).
 
 ## Overview
 
-The desktop app wraps the HackerAI web application in a native shell, providing:
+The desktop app wraps the Umbraa web application in a native shell, providing:
 
 - **Native window** with system integration
 - **Auto-updates** via Tauri's updater plugin
@@ -187,4 +187,4 @@ sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev
 
 ## License
 
-Proprietary - HackerAI
+Proprietary - Umbraa

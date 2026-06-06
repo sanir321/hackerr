@@ -115,7 +115,7 @@ interface GlobalStateType {
   sandboxPreference: SandboxPreference;
   setSandboxPreference: (preference: SandboxPreference) => void;
 
-  // Desktop bridge active (Centrifugo-based desktop sandbox)
+  // Desktop bridge active
   desktopBridgeActive: boolean;
 
   // Whether a local sandbox (desktop or remote) is available
@@ -369,7 +369,7 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
     }
   }, [queueBehavior]);
 
-  // Model selection — HackerAI tier ids (Lite/Pro/Max) are mode-agnostic;
+  // Model selection — Umbraa tier ids (Lite/Pro/Max) are mode-agnostic;
   // the active model is resolved server-side via resolveTierToProviderKey.
   const [selectedModel, setSelectedModelRaw] = useState<SelectedModel>(() => {
     const saved = readSelectedModel();

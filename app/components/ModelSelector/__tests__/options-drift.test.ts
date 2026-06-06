@@ -4,7 +4,7 @@ import { myProvider, resolveTierToProviderKey } from "@/lib/ai/providers";
 import type { ChatMode } from "@/types/chat";
 
 /**
- * Drift guard: every selectable HackerAI tier must resolve to a provider key
+ * Drift guard: every selectable Umbraa tier must resolve to a provider key
  * registered with `myProvider` in *both* modes. Without this, picking the
  * tier from the UI would crash on `myProvider.languageModel()`.
  */
@@ -31,26 +31,26 @@ describe("ModelSelector tier ↔ provider drift", () => {
     expect([...askIds].sort()).toEqual([...agentIds].sort());
   });
 
-  it("HackerAI Standard resolves to different providers per mode", () => {
-    expect(resolveTierToProviderKey("hackerai-standard", "ask")).toBe(
+  it("Umbraa Standard resolves to different providers per mode", () => {
+    expect(resolveTierToProviderKey("umbraa-standard", "ask")).toBe(
       "model-gemini-3-flash",
     );
-    expect(resolveTierToProviderKey("hackerai-standard", "agent")).toBe(
+    expect(resolveTierToProviderKey("umbraa-standard", "agent")).toBe(
       "model-kimi-k2.6",
     );
   });
 
-  it("HackerAI Pro and Max resolve to the same provider in both modes", () => {
-    expect(resolveTierToProviderKey("hackerai-pro", "ask")).toBe(
+  it("Umbraa Pro and Max resolve to the same provider in both modes", () => {
+    expect(resolveTierToProviderKey("umbraa-pro", "ask")).toBe(
       "model-sonnet-4.6",
     );
-    expect(resolveTierToProviderKey("hackerai-pro", "agent")).toBe(
+    expect(resolveTierToProviderKey("umbraa-pro", "agent")).toBe(
       "model-sonnet-4.6",
     );
-    expect(resolveTierToProviderKey("hackerai-max", "ask")).toBe(
+    expect(resolveTierToProviderKey("umbraa-max", "ask")).toBe(
       "model-opus-4.6",
     );
-    expect(resolveTierToProviderKey("hackerai-max", "agent")).toBe(
+    expect(resolveTierToProviderKey("umbraa-max", "agent")).toBe(
       "model-opus-4.6",
     );
   });
@@ -60,8 +60,8 @@ describe("ModelSelector tier ↔ provider drift", () => {
     expect(resolveTierToProviderKey("auto", "agent")).toBeNull();
   });
 
-  it("hover-popup descriptions are present for every HackerAI tier", () => {
-    const tiered = allOptions.filter((o) => o.label.startsWith("HackerAI"));
+  it("hover-popup descriptions are present for every Umbraa tier", () => {
+    const tiered = allOptions.filter((o) => o.label.startsWith("Umbraa"));
     expect(tiered.length).toBeGreaterThan(0);
     for (const option of tiered) {
       expect(option.description).toBeTruthy();

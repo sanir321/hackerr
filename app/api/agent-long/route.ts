@@ -100,23 +100,16 @@ export async function POST(req: NextRequest) {
     let localDesktopAttachmentsPrepared = false;
 
     if (hasLocalDesktopSourcePaths(requestMessages)) {
-      if (sandboxPreference !== "desktop") {
-        throw new ChatSDKError(
-          "bad_request:api",
-          "Desktop-local attachments can only be used with the desktop sandbox.",
-        );
-      }
-
       let { messages: preparedMessages, sandboxFiles } =
         prepareLocalDesktopAttachmentsForTrigger(
           requestMessages,
-          getUploadBasePath("desktop"),
+          getUploadBasePath("e2b"),
         );
       if (sandboxFiles.length > 0) {
         const sandboxManager = new HybridSandboxManager(
           userId,
           () => {},
-          "desktop",
+          "e2b",
           process.env.CONVEX_SERVICE_ROLE_KEY!,
           null,
           subscription,

@@ -30,7 +30,7 @@ jest.mock("sonner", () => ({
 
 describe("DeleteAccountDialog", () => {
   const mockUser = {
-    email: "signin.hackerai.co.harmonize442@passmail.net",
+    email: "signin.umbraa.ai.harmonize442@passmail.net",
     lastSignInAt: new Date().toISOString(),
   };
   const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;

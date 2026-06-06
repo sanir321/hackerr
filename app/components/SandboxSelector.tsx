@@ -9,7 +9,6 @@ import {
   Monitor,
   ChevronDown,
   ChevronRight,
-  Plus,
 } from "lucide-react";
 import {
   Popover,
@@ -19,7 +18,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { openSettingsDialog } from "@/lib/utils/settings-dialog";
 import { useTauri } from "@/app/hooks/useTauri";
 import { detectPlatform } from "@/app/download/DownloadSection";
 import { useGlobalState } from "@/app/contexts/GlobalState";
@@ -208,7 +206,7 @@ export function SandboxSelector({
                 </div>
                 <h4 className="text-sm font-semibold mb-1">My Computer</h4>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Download the desktop app to grant HackerAI access to your
+                  Download the desktop app to grant Umbraa access to your
                   computer.
                 </p>
                 <Button asChild size="sm" className="w-full">
@@ -259,16 +257,6 @@ export function SandboxSelector({
                 </button>
               );
             })}
-            <button
-              onClick={() => {
-                setOpen(false);
-                openSettingsDialog("Remote Control");
-              }}
-              className="w-full flex items-center gap-2.5 p-2 rounded-md text-left text-sm hover:bg-muted transition-colors"
-            >
-              <Plus className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1">Add remote control</span>
-            </button>
           </div>
         </div>
       </PopoverContent>

@@ -1,5 +1,5 @@
 import type { AnySandbox } from "@/types";
-import { isCentrifugoSandbox, isE2BSandbox } from "./sandbox-types";
+import { isE2BSandbox } from "./sandbox-types";
 
 export const MAX_COMMAND_EXECUTION_TIME = 10 * 60 * 1000; // 10 minutes
 
@@ -25,10 +25,7 @@ export function augmentCommandPath(
   sandbox: AnySandbox,
 ): string {
   if (isE2BSandbox(sandbox)) return command;
-  // Windows local sandboxes use cmd.exe or git-bash — Unix PATH dirs
-  // ($HOME/go/bin, /opt/homebrew/bin, etc.) don't apply, and `export`
-  // syntax would break cmd.exe entirely.
-  if (isCentrifugoSandbox(sandbox) && sandbox.isWindows()) return command;
+
   return `export PATH="${LOCAL_EXTRA_PATH_DIRS}:$PATH" && ${command}`;
 }
 
@@ -36,8 +33,7 @@ export function augmentCommandPath(
  * Build command options for sandbox execution.
  *
  * E2B sandbox requires user: "root" and cwd: "/home/user" for network tools
- * (ping, nmap, etc.) to work without sudo. CentrifugoSandbox (Docker) uses
- * --cap-add flags instead (NET_RAW, NET_ADMIN, SYS_PTRACE).
+ * (ping, nmap, etc.) to work without sudo.
  *
  * @param sandbox - The sandbox instance
  * @param handlers - Optional stdout/stderr handlers for foreground commands

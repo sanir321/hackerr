@@ -570,7 +570,7 @@ export function captureToolCalls({
   for (const tool of aggregatedToolCalls.values()) {
     posthog.capture({
       distinctId: userId,
-      event: "hackerai-tool_usage",
+      event: "umbraa-tool_usage",
       properties: {
         mode,
         toolName: tool.name,
@@ -613,7 +613,7 @@ export function captureAgentRun({
   if (!posthog || mode !== "agent") return;
   posthog.capture({
     distinctId: userId,
-    event: "hackerai-agent_run",
+    event: "umbraa-agent_run",
     properties: {
       mode,
       subscription,
@@ -652,7 +652,7 @@ export function captureFreeAgentValueReached({
 
   posthog.capture({
     distinctId: userId,
-    event: "hackerai-free_agent_value_reached",
+    event: "umbraa-free_agent_value_reached",
     properties: {
       user_id: userId,
       chat_id: chatId,
@@ -693,7 +693,7 @@ export function captureAgentCompletionAnalytics(
 /**
  * Capture one cost event per request with usage. In PostHog, answer
  * "how much does each user cost you?" by summing cost_dollars on
- * hackerai-usage_cost grouped by distinct_id (or user_id).
+ * umbraa-usage_cost grouped by distinct_id (or user_id).
  */
 export function captureUsageCost({
   posthog,
@@ -717,7 +717,7 @@ export function captureUsageCost({
   if (!posthog) return;
   posthog.capture({
     distinctId: userId,
-    event: "hackerai-usage_cost",
+    event: "umbraa-usage_cost",
     properties: {
       user_id: userId,
       subscription,

@@ -28,7 +28,6 @@ let consoleErrorSpy: jest.SpyInstance;
 
 function makeSandbox(size: number, e2b = false, windows = false) {
   return {
-    ...(e2b ? {} : { sandboxKind: "centrifugo" as const }),
     isWindows: jest.fn(() => windows),
     commands: {
       run: jest.fn(async (command: string) => {
@@ -81,7 +80,7 @@ describe("uploadSandboxFileToConvex", () => {
     consoleErrorSpy.mockRestore();
   });
 
-  test("rejects oversized Centrifugo files before uploading to S3", async () => {
+  test("rejects oversized generated files before uploading to S3", async () => {
     const sandbox = makeSandbox(MAX_GENERATED_FILE_SIZE_BYTES + 1);
 
     await expect(
@@ -137,7 +136,7 @@ describe("uploadSandboxFileToConvex", () => {
     );
   });
 
-  test("uploads allowed Centrifugo files using the preflight size", async () => {
+  test("uploads allowed generated files using the preflight size", async () => {
     const sandbox = makeSandbox(1234);
 
     const saved = await uploadSandboxFileToConvex({
@@ -165,7 +164,7 @@ describe("uploadSandboxFileToConvex", () => {
     });
   });
 
-  test("falls back to command upload when native Centrifugo upload fails", async () => {
+  test("falls back to command upload when native upload fails", async () => {
     const sandbox = makeSandbox(1234);
     sandbox.files.uploadToUrl.mockRejectedValueOnce(new Error("exit status 1"));
 
@@ -206,7 +205,7 @@ describe("uploadSandboxFileToConvex", () => {
         }
         if (command.includes("curl -fsSL -X PUT")) {
           return {
-            stdout: "\n__HACKERAI_UPLOAD_EXIT_CODE__:56\n",
+            stdout: "\n__UMBRAA_UPLOAD_EXIT_CODE__:56\n",
             stderr: "curl: (56) response ended early",
             exitCode: 0,
           };
@@ -249,7 +248,7 @@ describe("uploadSandboxFileToConvex", () => {
     expect(consoleErrorSpy.mock.calls[0][0]).not.toContain("windows_exit_code");
   });
 
-  test("uses Windows size fallback for Windows Centrifugo sandboxes", async () => {
+  test("uses Windows size fallback for Windows sandboxes", async () => {
     const sandbox = makeSandbox(0, false, true);
     (sandbox.commands.run as jest.Mock).mockImplementation(
       async (command: string) => {

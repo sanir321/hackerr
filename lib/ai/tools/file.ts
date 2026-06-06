@@ -4,7 +4,7 @@ import type { ToolContext } from "@/types";
 import { truncateOutput } from "@/lib/token-utils";
 import { supportsMultimodalToolResults } from "@/lib/ai/providers";
 import { buildSandboxCommandOptions } from "./utils/sandbox-command-options";
-import { isCentrifugoSandbox } from "./utils/sandbox-types";
+import { isE2BSandbox } from "./utils/sandbox-types";
 import { uploadSandboxFileToConvex } from "./utils/sandbox-file-uploader";
 import type { Id } from "@/convex/_generated/dataModel";
 import { logger } from "@/lib/logger";
@@ -22,7 +22,7 @@ const FILE_ACTIONS_TEXT_ONLY = ["read", "write", "append", "edit"] as const;
 type FileAction = (typeof FILE_ACTIONS_WITH_VIEW)[number];
 
 const MULTIMODAL_UPGRADE_MESSAGE =
-  "The current model does not support multimodal tool results for sandbox images. Please select HackerAI Pro or HackerAI Max and retry the view action.";
+  "The current model does not support multimodal tool results for sandbox images. Please select Umbraa Pro or Umbraa Max and retry the view action.";
 
 type ViewKind = "image";
 
@@ -66,9 +66,9 @@ import mimetypes
 import os
 import sys
 
-path = os.environ["HACKERAI_FILE_VIEW_PATH"]
-include_data = os.environ.get("HACKERAI_FILE_VIEW_INCLUDE_DATA") == "1"
-max_bytes = int(os.environ.get("HACKERAI_FILE_VIEW_MAX_BYTES", "10485760"))
+path = os.environ["UMBRAA_FILE_VIEW_PATH"]
+include_data = os.environ.get("UMBRAA_FILE_VIEW_INCLUDE_DATA") == "1"
+max_bytes = int(os.environ.get("UMBRAA_FILE_VIEW_MAX_BYTES", "10485760"))
 
 def emit(payload, code=0):
     print(json.dumps(payload, separators=(",", ":")))
@@ -135,8 +135,8 @@ const getFileExtension = (path: string): string | undefined => {
   return filename.slice(dotIndex + 1).toLowerCase();
 };
 
-function getViewSandboxType(sandbox: any): "centrifugo" | "e2b" {
-  return isCentrifugoSandbox(sandbox) ? "centrifugo" : "e2b";
+function getViewSandboxType(sandbox: any): "e2b" {
+  return "e2b";
 }
 
 function getActiveModelName(context: ToolContext): string | undefined {
@@ -237,15 +237,6 @@ function errorToLog(error: unknown) {
 }
 
 const getSandboxViewPath = (sandbox: unknown, path: string): string => {
-  const maybeSandbox = sandbox as any;
-  if (
-    isCentrifugoSandbox(maybeSandbox) &&
-    maybeSandbox.isWindows() &&
-    path.startsWith("/tmp/")
-  ) {
-    return `C:\\temp${path.slice(4).replace(/\//g, "\\")}`;
-  }
-
   return path;
 };
 
@@ -254,17 +245,11 @@ async function readSandboxFileForView(
   path: string,
   includeData: boolean,
 ): Promise<SandboxViewPayload> {
-  if (isCentrifugoSandbox(sandbox) && sandbox.isWindows()) {
-    throw new Error(
-      "The view action is not available for Windows local sandboxes yet. Use a Linux/E2B sandbox or inspect the image manually.",
-    );
-  }
-
   const sandboxPath = getSandboxViewPath(sandbox, path);
   const viewEnvVars = {
-    HACKERAI_FILE_VIEW_PATH: sandboxPath,
-    HACKERAI_FILE_VIEW_INCLUDE_DATA: includeData ? "1" : "0",
-    HACKERAI_FILE_VIEW_MAX_BYTES: String(MAX_VIEW_FILE_BYTES),
+    UMBRAA_FILE_VIEW_PATH: sandboxPath,
+    UMBRAA_FILE_VIEW_INCLUDE_DATA: includeData ? "1" : "0",
+    UMBRAA_FILE_VIEW_MAX_BYTES: String(MAX_VIEW_FILE_BYTES),
   };
   const command = `PYTHON_BIN="$(command -v python3 || command -v python)" && "$PYTHON_BIN" - <<'PY'\n${VIEW_FILE_SCRIPT}\nPY`;
   let result: {
@@ -412,7 +397,7 @@ export const createFile = (context: ToolContext) => {
         ]
       : [
           "Use 'read' for text-based or line-oriented formats.",
-          "This model cannot view sandbox images directly; ask the user to select HackerAI Pro or HackerAI Max for multimodal image viewing.",
+          "This model cannot view sandbox images directly; ask the user to select Umbraa Pro or Umbraa Max for multimodal image viewing.",
         ]),
     "Code MUST be saved to a file using this tool before execution via the shell tool.",
     "DO NOT write partial or truncated content; always output the full content.",

@@ -15,7 +15,7 @@ const AccountTab = () => {
       <div className="border-b py-2">
         <div className="flex items-center justify-between">
           <div>
-            <div className="font-medium">HackerAI Ultra</div>
+            <div className="font-medium">Umbraa Ultra</div>
           </div>
         </div>
 

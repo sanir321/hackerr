@@ -34,22 +34,22 @@ describe("ModelSelector", () => {
         "Balanced quality and speed, recommended for most tasks",
       ),
     ).toBeVisible();
-    expect(screen.getByText("HackerAI Standard")).toBeVisible();
-    expect(screen.getByText("HackerAI Pro")).toBeVisible();
-    expect(screen.getByText("HackerAI Max")).toBeVisible();
+    expect(screen.getByText("Umbraa Standard")).toBeVisible();
+    expect(screen.getByText("Umbraa Pro")).toBeVisible();
+    expect(screen.getByText("Umbraa Max")).toBeVisible();
 
     expect(
-      screen.getByRole("button", { name: /HackerAI Standard/i }),
+      screen.getByRole("button", { name: /Umbraa Standard/i }),
     ).toHaveAttribute("aria-pressed", "false");
   });
 
   it("selects Auto as a first-class option", () => {
     const onChange = jest.fn();
     render(
-      <ModelSelector value="hackerai-pro" onChange={onChange} mode="ask" />,
+      <ModelSelector value="umbraa-pro" onChange={onChange} mode="ask" />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /HackerAI Pro/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Umbraa Pro/i }));
     fireEvent.click(
       screen.getByRole("button", {
         name: /Auto Balanced quality and speed/i,

@@ -37,7 +37,7 @@ const logLocalAttachmentDebug = (
 };
 
 /**
- * E2B uses /home/user/upload; any local connection uses /tmp/hackerai-upload
+ * E2B uses /home/user/upload; any local connection uses /tmp/umbraa-upload
  * since the host machine may not have /home/user (e.g. macOS in dangerous mode).
  */
 export const getUploadBasePath = (
@@ -45,7 +45,7 @@ export const getUploadBasePath = (
 ): string =>
   sandboxPreference === "e2b" || !sandboxPreference
     ? "/home/user/upload"
-    : "/tmp/hackerai-upload";
+    : "/tmp/umbraa-upload";
 
 const getLastUserMessageIndex = (messages: UIMessage[]): number => {
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -269,7 +269,7 @@ export const prepareLocalDesktopAttachmentsForTrigger = (
 
 /**
  * Downloads a file from URL to sandbox path
- * Works with both E2B and CentrifugoSandbox
+ * Works with the E2B sandbox
  */
 const downloadFileToSandbox = async (
   sandbox: any,
@@ -278,7 +278,6 @@ const downloadFileToSandbox = async (
 ): Promise<void> => {
   validateDownloadUrl(url);
 
-  // CentrifugoSandbox has downloadFromUrl method
   if (sandbox.files?.downloadFromUrl) {
     return sandbox.files.downloadFromUrl(url, localPath);
   }
@@ -368,7 +367,7 @@ const shouldTryUploadPathFallback = (
   localPath: string,
   error: unknown,
 ): boolean => {
-  if (!localPath.startsWith("/tmp/hackerai-upload/")) return false;
+  if (!localPath.startsWith("/tmp/umbraa-upload/")) return false;
   const message = error instanceof Error ? error.message : String(error);
   return /permission denied|read-only file system|cannot create directory|failed to create directory/i.test(
     message,
@@ -386,7 +385,7 @@ const resolveWritableUploadFallbackPath = async (
     `filename=${shellQuote(fileName)}`,
     `for base in "\${TMPDIR:-/tmp}" /var/tmp "\${HOME:-}" "\${PWD:-.}"; do`,
     `  [ -n "$base" ] || continue`,
-    `  dir="$base/hackerai-upload"`,
+    `  dir="$base/umbraa-upload"`,
     `  if mkdir -p "$dir" 2>/dev/null && [ -w "$dir" ]; then`,
     `    cd "$dir" 2>/dev/null && printf '%s/%s' "$(pwd -P)" "$filename"`,
     `    exit 0`,

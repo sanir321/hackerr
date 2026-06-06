@@ -1,8 +1,8 @@
 {
   "default": {
     "identifier": "default",
-    "description": "Default capabilities for HackerAI Desktop",
-    "remote": { "urls": ["http://localhost:*", "https://hackerai.co/*"] },
+    "description": "Default capabilities for Umbraa Desktop",
+    "remote": { "urls": ["http://localhost:*", "https://hackerai.co/*", "https://umbraa.ai/*"] },
     "local": true,
     "windows": ["main"],
     "permissions": [

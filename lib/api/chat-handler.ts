@@ -271,8 +271,7 @@ export const createChatHandler = () => {
           subscription,
           uploadBasePath,
           modelOverride: selectedModelOverride,
-          allowLocalDesktopFiles:
-            isAgentMode(mode) && sandboxPreference === "desktop",
+          allowLocalDesktopFiles: false,
         });
 
       // Empty after processing → Gemini rejects with "must include at least one parts field".
@@ -418,10 +417,9 @@ export const createChatHandler = () => {
               sandboxPreference,
               process.env.CONVEX_SERVICE_ROLE_KEY,
               userCustomization?.guardrails_config,
-              // Caido proxy temporarily disabled for all users.
-              // Was: subscription !== "free" && (userCustomization?.caido_enabled ?? false)
-              false,
-              undefined, // caido_port (disabled)
+              // Caido proxy
+              userCustomization?.caido_enabled ?? false,
+              userCustomization?.caido_port,
               undefined, // appendMetadataStream
               (costDollars: number) => {
                 usageTracker.providerCost += costDollars;

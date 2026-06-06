@@ -29,13 +29,11 @@ export const createOpenUrlTool = () => {
         // Construct the Jina AI reader URL with proper encoding
         const jinaUrl = `https://r.jina.ai/${encodeURIComponent(url)}`;
 
-        // Make the request to Jina AI reader
+        // Make the request to Jina AI reader (free tier, no API key needed)
         const response = await fetch(jinaUrl, {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${process.env.JINA_API_KEY}`,
             "X-Timeout": "30",
-            "X-Base": "final",
             "X-Token-Budget": "200000",
           },
           signal: abortSignal,

@@ -58,10 +58,6 @@ const mockCreateE2BPtyHandle = createE2BPtyHandle as jest.MockedFunction<
   typeof createE2BPtyHandle
 >;
 
-jest.mock("../utils/centrifugo-pty-adapter", () => ({
-  createCentrifugoPtyHandle: jest.fn(),
-}));
-
 // ── Fake PTY handle factory ──────────────────────────────────────────
 
 interface FakeHandle extends PtyHandle {
@@ -155,8 +151,6 @@ function makeContext(opts: {
     mode: "agent",
     isE2BSandbox: (s: unknown) => {
       if (!s || typeof s !== "object") return false;
-      if ((s as { sandboxKind?: unknown }).sandboxKind === "centrifugo")
-        return false;
       const sb = s as { jupyterUrl?: unknown; pty?: unknown };
       return typeof sb.jupyterUrl === "string" || typeof sb.pty === "object";
     },

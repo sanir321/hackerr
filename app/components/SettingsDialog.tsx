@@ -9,20 +9,18 @@ import {
   Database,
   Users,
   Infinity,
-  Server,
   ChartNoAxesCombined,
   Gauge,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ManageNotesDialog } from "@/app/components/ManageNotesDialog";
-import { CustomizeHackerAIDialog } from "@/app/components/CustomizeHackerAIDialog";
+import { CustomizeUmbraaDialog } from "@/app/components/CustomizeUmbraaDialog";
 import { SecurityTab } from "@/app/components/SecurityTab";
 import { PersonalizationTab } from "@/app/components/PersonalizationTab";
 import { AccountTab } from "@/app/components/AccountTab";
 import { DataControlsTab } from "@/app/components/DataControlsTab";
 import { TeamTab } from "@/app/components/TeamTab";
 import { AgentsTab } from "@/app/components/AgentsTab";
-import { RemoteControlTab } from "@/app/components/RemoteControlTab";
 import { UsageTab } from "@/app/components/UsageTab";
 import { ExtraUsageSection } from "@/app/components/ExtraUsageSection";
 import { TeamExtraUsageSection } from "@/app/components/TeamExtraUsageSection";
@@ -68,11 +66,6 @@ const SettingsDialog = ({
 
   // Shared tabs for all users with agent mode access
   const agentsTab = { id: "Agents", label: "Agents", icon: Infinity };
-  const localSandboxTab = {
-    id: "Remote Control",
-    label: "Remote Control",
-    icon: Server,
-  };
   // Tabs only for paid users
   const usageTab = { id: "Usage", label: "Usage", icon: ChartNoAxesCombined };
   const extraUsageTab = {
@@ -88,7 +81,6 @@ const SettingsDialog = ({
       ? [
           ...baseTabs,
           agentsTab,
-          localSandboxTab,
           usageTab,
           ...(isTeamAdmin ? [extraUsageTab] : []),
           membersTab,
@@ -98,12 +90,11 @@ const SettingsDialog = ({
         ? [
             ...baseTabs,
             agentsTab,
-            localSandboxTab,
             usageTab,
             extraUsageTab,
             accountTab,
           ]
-        : [...baseTabs, agentsTab, localSandboxTab, accountTab];
+        : [...baseTabs, agentsTab, accountTab];
 
   const canShowInitialTab = initialTab
     ? tabs.some((t) => t.id === initialTab)
@@ -240,8 +231,6 @@ const SettingsDialog = ({
 
                 {activeTab === "Agents" && <AgentsTab />}
 
-                {activeTab === "Remote Control" && <RemoteControlTab />}
-
                 {activeTab === "Usage" && <UsageTab />}
 
                 {activeTab === "Extra Usage" && (
@@ -268,8 +257,8 @@ const SettingsDialog = ({
         onOpenChange={setShowNotesDialog}
       />
 
-      {/* Customize HackerAI Dialog */}
-      <CustomizeHackerAIDialog
+      {/* Customize Umbraa Dialog */}
+      <CustomizeUmbraaDialog
         open={showCustomizeDialog}
         onOpenChange={setShowCustomizeDialog}
       />

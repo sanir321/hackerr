@@ -13,36 +13,41 @@ export function isChatMode(value: string | null): value is ChatMode {
 
 export type SelectedModel =
   | "auto"
-  | "hackerai-standard"
-  | "hackerai-pro"
-  | "hackerai-max";
+  | "umbraa-standard"
+  | "umbraa-pro"
+  | "umbraa-max";
 
 export const SELECTABLE_MODELS: readonly SelectedModel[] = [
   "auto",
-  "hackerai-standard",
-  "hackerai-pro",
-  "hackerai-max",
+  "umbraa-standard",
+  "umbraa-pro",
+  "umbraa-max",
 ];
 
 /**
- * Map of legacy ids to the current `SelectedModel` union. Covers two prior
+ * Map of legacy ids to the current `SelectedModel` union. Covers three prior
  * shapes:
- *   1. Underlying-model ids from before the HackerAI tier rebrand.
+ *   1. Underlying-model ids from before the tier rebrand.
  *   2. `hackerai-lite` from the short-lived first naming of the entry tier
- *      (renamed to `hackerai-standard` because Lite mis-described Kimi K2.6).
+ *      (renamed to `umbraa-standard` because Lite mis-described Kimi K2.6).
+ *   3. `hackerai-*` ids from the HackerAI era (rebranded to Umbraa).
  * Used by `coerceSelectedModel` to migrate values on read.
  */
 export const LEGACY_MODEL_ID_MAP: Record<string, SelectedModel> = {
-  "sonnet-4.6": "hackerai-pro",
-  "opus-4.6": "hackerai-max",
-  "gemini-3-flash": "hackerai-standard",
-  "kimi-k2.6": "hackerai-standard",
+  "sonnet-4.6": "umbraa-pro",
+  "opus-4.6": "umbraa-max",
+  "gemini-3-flash": "umbraa-standard",
+  "kimi-k2.6": "umbraa-standard",
   // Grok was removed from the picker before the tier rebrand. Both variants
   // were entry-level alternatives to the auto router (Gemini/Kimi territory),
   // so map them to Standard rather than dropping the user's preference.
-  "grok-4.1": "hackerai-standard",
-  "grok-4.3": "hackerai-standard",
-  "hackerai-lite": "hackerai-standard",
+  "grok-4.1": "umbraa-standard",
+  "grok-4.3": "umbraa-standard",
+  "hackerai-lite": "umbraa-standard",
+  // HackerAI-era tier names — rebranded to Umbraa
+  "hackerai-standard": "umbraa-standard",
+  "hackerai-pro": "umbraa-pro",
+  "hackerai-max": "umbraa-max",
 };
 
 /**
@@ -354,7 +359,7 @@ export type QueueBehavior = "queue" | "stop-and-send";
 
 // "e2b" for cloud sandbox, "desktop" for Tauri desktop app, or a connectionId UUID for a specific local connection.
 // Uses `string & {}` to preserve autocomplete for well-known values while allowing arbitrary strings.
-export type SandboxPreference = "e2b" | "desktop" | (string & {});
+export type SandboxPreference = "e2b";
 
 /**
  * Preview message for share dialog (full message structure with parts)

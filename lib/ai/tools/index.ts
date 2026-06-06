@@ -12,7 +12,7 @@ import { createWebSearch } from "./web-search";
 import { createOpenUrlTool } from "./open-url";
 import { createTodoWrite } from "./todo-write";
 // Caido proxy temporarily disabled for all users — see lib/api/chat-handler.ts kill switch.
-// import { createProxyTools } from "./proxy-tool";
+import { createProxyTools } from "./proxy-tool";
 import {
   createCreateNote,
   createListNotes,
@@ -152,14 +152,9 @@ export const createTools = (
           update_note: createUpdateNote(context),
           delete_note: createDeleteNote(context),
         }),
-      ...(process.env.PERPLEXITY_API_KEY && {
-        web_search: createWebSearch(context),
-      }),
-      // Caido proxy temporarily disabled for all users.
-      // ...(caidoEnabled && createProxyTools(context)),
-      ...(process.env.JINA_API_KEY && {
-        open_url: createOpenUrlTool(),
-      }),
+      web_search: createWebSearch(context),
+      ...(caidoEnabled && createProxyTools(context)),
+      open_url: createOpenUrlTool(),
     };
 
     // Filter tools based on mode
@@ -172,12 +167,8 @@ export const createTools = (
               update_note: allTools.update_note,
               delete_note: allTools.delete_note,
             }),
-          ...(process.env.PERPLEXITY_API_KEY && {
-            web_search: createWebSearch(context),
-          }),
-          ...(process.env.JINA_API_KEY && {
-            open_url: createOpenUrlTool(),
-          }),
+          web_search: createWebSearch(context),
+          open_url: createOpenUrlTool(),
         }
       : allTools;
   };

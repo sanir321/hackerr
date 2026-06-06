@@ -6,11 +6,10 @@ import { FileAccumulator } from "@/lib/ai/tools/utils/file-accumulator";
 import type { BackgroundProcessTracker } from "@/lib/ai/tools/utils/background-process-tracker";
 import type { PtySessionManager } from "@/lib/ai/tools/utils/pty-session-manager";
 import type { ChatMode, SubscriptionTier } from "./chat";
-import type { CentrifugoSandbox } from "@/lib/ai/tools/utils/centrifugo-sandbox";
 import type { SandboxFallbackInfo } from "@/lib/ai/tools/utils/hybrid-sandbox-manager";
 
-// Union type for E2B Sandbox and local CentrifugoSandbox
-export type AnySandbox = Sandbox | CentrifugoSandbox;
+// E2B Sandbox type
+export type AnySandbox = Sandbox;
 
 // Type guard to check if sandbox is E2B
 export type IsE2BSandboxFn = (s: AnySandbox | null) => s is Sandbox;

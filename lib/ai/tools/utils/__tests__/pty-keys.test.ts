@@ -65,9 +65,9 @@ describe("translateInput", () => {
 describe("translateInputSequence", () => {
   it("concatenates tokens so typing + Enter fits one send", () => {
     const out = decode(
-      translateInputSequence(["hackerai-test-project", "Enter"]),
+      translateInputSequence(["umbraa-test-project", "Enter"]),
     );
-    expect(out).toBe("hackerai-test-project\r");
+    expect(out).toBe("umbraa-test-project\r");
   });
 
   it("mixes literal text with control keys in order", () => {

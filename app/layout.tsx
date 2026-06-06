@@ -20,11 +20,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const APP_NAME = "HackerAI";
-const APP_DEFAULT_TITLE = "HackerAI - AI-Powered Penetration Testing Assistant";
-const APP_TITLE_TEMPLATE = "%s | HackerAI";
+const APP_NAME = "Umbraa";
+const APP_DEFAULT_TITLE = "Umbraa - AI-Powered Penetration Testing Assistant";
+const APP_TITLE_TEMPLATE = "%s | Umbraa";
 const APP_DESCRIPTION =
-  "HackerAI is an AI pentesting assistant that helps you scan targets, exploit vulnerabilities, analyze findings, and write reports faster.";
+  "Umbraa is an AI pentesting assistant that helps you scan targets, exploit vulnerabilities, analyze findings, and write reports faster.";
 
 export const metadata: Metadata = {
   applicationName: APP_NAME,
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   description: APP_DESCRIPTION,
   manifest: "/manifest.json",
   keywords: [
-    "hackerai",
+    "umbraa",
     "pentestgpt",
     "hacker ai",
     "pentest ai",
@@ -63,10 +63,10 @@ export const metadata: Metadata = {
     description: APP_DESCRIPTION,
     images: [
       {
-        url: "https://hackerai.co/icon-512x512.png",
+        url: "https://umbraa.ai/icon-512x512.png",
         width: 512,
         height: 512,
-        alt: "HackerAI",
+        alt: "Umbraa",
       },
     ],
   },
@@ -79,10 +79,10 @@ export const metadata: Metadata = {
     description: APP_DESCRIPTION,
     images: [
       {
-        url: "https://hackerai.co/icon-512x512.png",
+        url: "https://umbraa.ai/icon-512x512.png",
         width: 512,
         height: 512,
-        alt: "HackerAI",
+        alt: "Umbraa",
       },
     ],
   },

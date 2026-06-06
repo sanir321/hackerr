@@ -62,7 +62,7 @@ export function selectModel(
   // ASK Standard uses the explicit `model-deepseek-v4-flash` /
   // `model-gemini-3-flash` keys so any UI that reads `getModelDisplayName`
   // shows the picked model rather than the auto-router label.
-  if (selectedModel === "hackerai-standard" && !isAgent) {
+  if (selectedModel === "umbraa-standard" && !isAgent) {
     return askUsesDeepSeek ? "model-deepseek-v4-flash" : "model-gemini-3-flash";
   }
 

@@ -318,7 +318,7 @@ export function isGeminiModel(modelName: string): boolean {
 }
 
 /**
- * Map a HackerAI tier id to the underlying provider key for a given mode.
+ * Map a Umbraa tier id to the underlying provider key for a given mode.
  * Returns `null` for `"auto"` (the caller routes to the auto-router model
  * key instead). The Pro/Max tiers map to the same model in both modes; only
  * Lite differs (Gemini 3 Flash for ask, Kimi K2.6 for agent).
@@ -330,17 +330,17 @@ export function resolveTierToProviderKey(
   if (tier === "auto") return null;
   if (isSelfHosted) {
     switch (tier) {
-      case "hackerai-pro": return "model-sonnet-4.6";
-      case "hackerai-max": return "model-opus-4.6";
+      case "umbraa-pro": return "model-sonnet-4.6";
+      case "umbraa-max": return "model-opus-4.6";
       default: return "model-deepseek-v4-flash";
     }
   }
   switch (tier) {
-    case "hackerai-standard":
+    case "umbraa-standard":
       return isAgentMode(mode) ? "model-kimi-k2.6" : "model-gemini-3-flash";
-    case "hackerai-pro":
+    case "umbraa-pro":
       return "model-sonnet-4.6";
-    case "hackerai-max":
+    case "umbraa-max":
       return "model-opus-4.6";
   }
 }

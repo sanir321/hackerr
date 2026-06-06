@@ -2,7 +2,6 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { validateServiceKey } from "./lib/utils";
 import { DatabaseReader } from "./_generated/server";
-import { SignJWT } from "jose";
 
 /**
  * Internal mutation: purge disconnected sandbox connections older than cutoff.
@@ -42,27 +41,6 @@ function generateToken(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return `hsb_${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`;
-}
-
-// ============================================================================
-// CENTRIFUGO JWT GENERATION
-// ============================================================================
-
-async function generateCentrifugoToken(
-  userId: string,
-  connectionId: string,
-): Promise<string> {
-  const secret = process.env.CENTRIFUGO_TOKEN_SECRET;
-  if (!secret) {
-    throw new Error("CENTRIFUGO_TOKEN_SECRET environment variable not set");
-  }
-
-  const encodedSecret = new TextEncoder().encode(secret);
-
-  return new SignJWT({ sub: userId, info: { connectionId } })
-    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
-    .setExpirationTime("1h")
-    .sign(encodedSecret);
 }
 
 // ============================================================================
@@ -211,8 +189,6 @@ export const connect = mutation({
     success: v.boolean(),
     userId: v.optional(v.string()),
     connectionId: v.optional(v.string()),
-    centrifugoToken: v.optional(v.string()),
-    centrifugoWsUrl: v.optional(v.string()),
     error: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
@@ -227,11 +203,6 @@ export const connect = mutation({
     }
 
     const userId = tokenRecord.user_id;
-    const centrifugoWsUrl = process.env.CENTRIFUGO_WS_URL;
-    if (!centrifugoWsUrl) {
-      return { success: false, error: "Centrifugo not configured" };
-    }
-
     const connectionId = crypto.randomUUID();
 
     // Create new connection (multiple connections allowed)
@@ -248,132 +219,11 @@ export const connect = mutation({
       created_at: Date.now(),
     });
 
-    const centrifugoToken = await generateCentrifugoToken(userId, connectionId);
-
     return {
       success: true,
       userId,
       connectionId,
-      centrifugoToken,
-      centrifugoWsUrl,
     };
-  },
-});
-
-// Shared return shape for both refresh handlers. Connection-state failures
-// (row missing, ownership mismatch, status flipped to disconnected) used to
-// throw ConvexError, but they're expected lifecycle outcomes — every reconnect
-// after a token regen, presence sweep, or desktop kick produced a logged
-// error. They now return a discriminated union so the client can shut down
-// the Centrifuge retry loop without polluting the error dashboard.
-const refreshCentrifugoTokenReturns = v.union(
-  v.object({
-    ok: v.literal(true),
-    centrifugoToken: v.string(),
-  }),
-  v.object({
-    ok: v.literal(false),
-    terminated: v.literal(true),
-    reason: v.union(
-      v.literal("connection_not_found"),
-      v.literal("ownership_mismatch"),
-      v.literal("connection_inactive"),
-    ),
-    connectionId: v.string(),
-    clientVersion: v.union(v.string(), v.null()),
-    status: v.union(v.string(), v.null()),
-    disconnectReason: v.union(
-      v.literal("client_disconnect"),
-      v.literal("desktop_disconnect"),
-      v.literal("desktop_kicked_by_new_session"),
-      v.literal("token_regenerated"),
-      v.literal("presence_sweep"),
-      v.null(),
-    ),
-    msSinceDisconnected: v.union(v.number(), v.null()),
-    msSinceLastHeartbeat: v.union(v.number(), v.null()),
-    msSinceCreated: v.union(v.number(), v.null()),
-  }),
-);
-
-type ConnectionRow = {
-  connection_id: string;
-  client_version: string;
-  status: "connected" | "disconnected";
-  disconnect_reason?:
-    | "client_disconnect"
-    | "desktop_disconnect"
-    | "desktop_kicked_by_new_session"
-    | "token_regenerated"
-    | "presence_sweep";
-  disconnected_at?: number;
-  last_heartbeat: number;
-  created_at: number;
-};
-
-function terminatedResult(
-  reason: "connection_not_found" | "ownership_mismatch" | "connection_inactive",
-  connectionId: string,
-  connection: ConnectionRow | null,
-) {
-  const now = Date.now();
-  return {
-    ok: false as const,
-    terminated: true as const,
-    reason,
-    connectionId,
-    clientVersion: connection?.client_version ?? null,
-    status: connection?.status ?? null,
-    disconnectReason: connection?.disconnect_reason ?? null,
-    msSinceDisconnected:
-      connection?.disconnected_at != null
-        ? now - connection.disconnected_at
-        : null,
-    msSinceLastHeartbeat:
-      connection != null ? now - connection.last_heartbeat : null,
-    msSinceCreated: connection != null ? now - connection.created_at : null,
-  };
-}
-
-export const refreshCentrifugoToken = mutation({
-  args: {
-    token: v.string(),
-    connectionId: v.string(),
-  },
-  returns: refreshCentrifugoTokenReturns,
-  handler: async (ctx, { token, connectionId }) => {
-    const tokenResult = await validateToken(ctx.db, token);
-    if (!tokenResult.valid) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Invalid token",
-      });
-    }
-
-    const connection = await ctx.db
-      .query("local_sandbox_connections")
-      .withIndex("by_connection_id", (q) => q.eq("connection_id", connectionId))
-      .first();
-
-    if (!connection) {
-      return terminatedResult("connection_not_found", connectionId, null);
-    }
-
-    if (connection.user_id !== tokenResult.userId) {
-      return terminatedResult("ownership_mismatch", connectionId, null);
-    }
-
-    if (connection.status !== "connected") {
-      return terminatedResult("connection_inactive", connectionId, connection);
-    }
-
-    await ctx.db.patch(connection._id, { last_heartbeat: Date.now() });
-
-    const centrifugoToken = await generateCentrifugoToken(
-      connection.user_id,
-      connection.connection_id,
-    );
-    return { ok: true as const, centrifugoToken };
   },
 });
 
@@ -426,8 +276,6 @@ export const connectDesktop = mutation({
   },
   returns: v.object({
     connectionId: v.string(),
-    centrifugoToken: v.string(),
-    centrifugoWsUrl: v.string(),
   }),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -474,57 +322,9 @@ export const connectDesktop = mutation({
       created_at: Date.now(),
     });
 
-    const centrifugoToken = await generateCentrifugoToken(userId, connectionId);
-    const centrifugoWsUrl = process.env.CENTRIFUGO_WS_URL;
-    if (!centrifugoWsUrl) {
-      throw new Error("CENTRIFUGO_WS_URL environment variable not set");
-    }
-
     return {
       connectionId,
-      centrifugoToken,
-      centrifugoWsUrl,
     };
-  },
-});
-
-export const refreshCentrifugoTokenDesktop = mutation({
-  args: {
-    connectionId: v.string(),
-  },
-  returns: refreshCentrifugoTokenReturns,
-  handler: async (ctx, { connectionId }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Unauthorized: User not authenticated",
-      });
-    }
-
-    const userId = identity.subject;
-
-    const connection = await ctx.db
-      .query("local_sandbox_connections")
-      .withIndex("by_connection_id", (q) => q.eq("connection_id", connectionId))
-      .first();
-
-    if (!connection) {
-      return terminatedResult("connection_not_found", connectionId, null);
-    }
-
-    if (connection.user_id !== userId) {
-      return terminatedResult("ownership_mismatch", connectionId, null);
-    }
-
-    if (connection.status !== "connected") {
-      return terminatedResult("connection_inactive", connectionId, connection);
-    }
-
-    await ctx.db.patch(connection._id, { last_heartbeat: Date.now() });
-
-    const centrifugoToken = await generateCentrifugoToken(userId, connectionId);
-    return { ok: true as const, centrifugoToken };
   },
 });
 

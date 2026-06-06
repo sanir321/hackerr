@@ -1,5 +1,4 @@
 import type { Sandbox } from "@e2b/code-interpreter";
-import type { CentrifugoSandbox } from "./centrifugo-sandbox";
 import type { AnySandbox } from "@/types";
 
 export interface OsInfo {
@@ -22,33 +21,14 @@ export interface ConnectionInfo {
 }
 
 /**
- * Type guard to check if a sandbox is a CentrifugoSandbox
- * using the `sandboxKind` discriminant field.
- */
-export function isCentrifugoSandbox(
-  sandbox: AnySandbox | null,
-): sandbox is CentrifugoSandbox {
-  return (
-    sandbox !== null &&
-    "sandboxKind" in sandbox &&
-    (sandbox as any).sandboxKind === "centrifugo"
-  );
-}
-
-/**
  * Type guard to check if a sandbox is an E2B Sandbox.
- *
- * Any non-Centrifugo sandbox is treated as E2B. PTY availability should be
- * checked at the call site via `sandbox.pty`, not in this discriminator.
  */
 export function isE2BSandbox(sandbox: AnySandbox | null): sandbox is Sandbox {
-  if (sandbox === null) return false;
-  if (isCentrifugoSandbox(sandbox)) return false;
-  return true; // any non-Centrifugo sandbox is E2B
+  return sandbox !== null;
 }
 
 /**
- * Common sandbox interface that both E2B and CentrifugoSandbox implement
+ * Common sandbox interface that the E2B sandbox implements
  */
 export interface CommonSandboxInterface {
   commands: {

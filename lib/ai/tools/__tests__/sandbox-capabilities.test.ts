@@ -24,12 +24,6 @@ const createMockE2BSandbox = () => ({
   commands: { run: jest.fn() },
 });
 
-// Mock CentrifugoSandbox (no jupyterUrl property)
-const createMockCentrifugoSandbox = () => ({
-  sandboxKind: "centrifugo" as const,
-  commands: { run: jest.fn() },
-});
-
 describe("Sandbox Capabilities for Network Tools", () => {
   describe("buildSandboxCommandOptions", () => {
     it("should include user:root and cwd:/home/user for E2B sandbox", () => {
@@ -42,22 +36,12 @@ describe("Sandbox Capabilities for Network Tools", () => {
       expect(options.timeoutMs).toBe(MAX_COMMAND_EXECUTION_TIME);
     });
 
-    it("should NOT include user:root for CentrifugoSandbox (uses Docker capabilities)", () => {
-      const centrifugoSandbox = createMockCentrifugoSandbox();
-
-      const options = buildSandboxCommandOptions(centrifugoSandbox as any);
-
-      expect(options).not.toHaveProperty("user");
-      expect(options).not.toHaveProperty("cwd");
-      expect(options.timeoutMs).toBe(MAX_COMMAND_EXECUTION_TIME);
-    });
-
     it("should include handlers when provided", () => {
-      const centrifugoSandbox = createMockCentrifugoSandbox();
+      const e2bSandbox = createMockE2BSandbox();
       const onStdout = jest.fn();
       const onStderr = jest.fn();
 
-      const options = buildSandboxCommandOptions(centrifugoSandbox as any, {
+      const options = buildSandboxCommandOptions(e2bSandbox as any, {
         onStdout,
         onStderr,
       });
@@ -68,12 +52,10 @@ describe("Sandbox Capabilities for Network Tools", () => {
   });
 
   describe("Sandbox Type Detection", () => {
-    it("should correctly identify E2B vs Centrifugo sandbox", () => {
+    it("should correctly identify E2B sandbox and reject null", () => {
       const e2bSandbox = createMockE2BSandbox();
-      const centrifugoSandbox = createMockCentrifugoSandbox();
 
       expect(isE2BSandbox(e2bSandbox as any)).toBe(true);
-      expect(isE2BSandbox(centrifugoSandbox as any)).toBe(false);
       expect(isE2BSandbox(null)).toBe(false);
     });
   });

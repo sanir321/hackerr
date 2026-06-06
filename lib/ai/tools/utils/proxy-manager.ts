@@ -9,13 +9,12 @@
 import type { CaidoErrorKind, CaidoReadyInfo, ToolContext } from "@/types";
 import { CAIDO_DEFAULTS, getCaidoConfig } from "./caido-proxy";
 import { buildSandboxCommandOptions } from "./sandbox-command-options";
-import { isCentrifugoSandbox } from "./sandbox-types";
 import { truncateContent, TRUNCATION_MESSAGE } from "@/lib/token-utils";
 
 const CAIDO_TOKEN_FILE = "/tmp/caido-token";
 const CAIDO_LOG = "/tmp/caido.log";
 
-/** Cached auth token for local (CentrifugoSandbox) GraphQL calls via fetch. */
+/** Cached auth token for local GraphQL calls via fetch. */
 let cachedCaidoToken: string | null = null;
 
 /**
@@ -32,9 +31,6 @@ const caidoLock = new WeakMap<object, Promise<void>>();
  * (`cached_ready`). Added on setup start, removed on setup settle.
  */
 const caidoInFlight = new WeakSet<object>();
-
-/** Tracks sandboxes we've already warned about Windows incompatibility. */
-const windowsWarned = new WeakSet<object>();
 
 /** Mutable tracker — `doEnsureCaido` reports its path + sub-timings through this
  *  so the wrapper in `ensureCaido` can emit a single `CaidoReadyInfo` at the end. */
@@ -149,34 +145,6 @@ async function invalidateAndKillCaido(context: ToolContext): Promise<void> {
 export async function ensureCaido(context: ToolContext): Promise<void> {
   const startedAt = performance.now();
   const tracker: CaidoSetupTimings = {};
-
-  // Caido proxy requires a POSIX shell — not available on Windows sandboxes.
-  // Cache the rejection so we throw once per session, not on every command.
-  const { sandbox } = await context.sandboxManager.getSandbox();
-  if (isCentrifugoSandbox(sandbox) && sandbox.isWindows()) {
-    const cached = caidoLock.get(context.sandboxManager);
-    if (cached) return cached; // re-throws the cached rejection (already logged on first call)
-
-    const rejection = Promise.reject(
-      new Error(
-        "Caido proxy is not supported on Windows sandboxes. " +
-          "HTTP traffic interception is only available on Linux and macOS.",
-      ),
-    );
-    // Prevent unhandled rejection when no one is awaiting this particular ref
-    rejection.catch(() => {});
-    caidoLock.set(context.sandboxManager, rejection);
-
-    if (!windowsWarned.has(context.sandboxManager)) {
-      windowsWarned.add(context.sandboxManager);
-      console.info(
-        "[Caido] Skipping setup — Caido proxy is not supported on Windows sandboxes.",
-      );
-    }
-    tracker.path = "windows_unsupported";
-    reportCaidoReady(context, startedAt, tracker);
-    return rejection;
-  }
 
   const existing = caidoLock.get(context.sandboxManager);
   if (existing) {
@@ -307,7 +275,7 @@ async function doEnsureCaido(
   const createB64 = Buffer.from(
     JSON.stringify({
       query:
-        'mutation { createProject(input: {name: "hackerai", temporary: true}) { project { id } error { ... on NameTakenUserError { code } ... on PermissionDeniedUserError { code } ... on OtherUserError { code } } } }',
+        'mutation { createProject(input: {name: "umbraa", temporary: true}) { project { id } error { ... on NameTakenUserError { code } ... on PermissionDeniedUserError { code } ... on OtherUserError { code } } } }',
     }),
   ).toString("base64");
 
@@ -394,10 +362,10 @@ async function doEnsureCaido(
     `if [ -z "$TOKEN" ]; then echo "needs_start" && exit 0; fi`,
     `printf '%s' "$TOKEN" > "$TOKEN_FILE"`,
     ``,
-    `# Find or create the "hackerai" project`,
+    `# Find or create the "umbraa" project`,
     `PROJECTS=$(echo '${listProjectsB64}' | base64 -d | curl -sL --noproxy '*' --connect-timeout 5 --max-time 10 -X POST "$CAIDO_API/graphql" \\`,
     `  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" --data @-)`,
-    `PROJECT_ID=$(echo "$PROJECTS" | grep -o '"id":"[^"]*","name":"hackerai"' | grep -Eo '"id":"[^"]*"' | cut -d'"' -f4 || echo "")`,
+    `PROJECT_ID=$(echo "$PROJECTS" | grep -o '"id":"[^"]*","name":"umbraa"' | grep -Eo '"id":"[^"]*"' | cut -d'"' -f4 || echo "")`,
     `if [ -z "$PROJECT_ID" ]; then`,
     `  CREATE=$(echo '${createB64}' | base64 -d | curl -sL --noproxy '*' -X POST "$CAIDO_API/graphql" --connect-timeout 5 --max-time 20 \\`,
     `    -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" --data @-)`,
@@ -619,9 +587,7 @@ function getBaseUrl(): string {
 /**
  * Execute a Caido GraphQL query.
  *
- * On local sandboxes (CentrifugoSandbox), uses Node.js fetch directly to
- * bypass Caido's proxy dispatcher which misroutes curl requests on macOS.
- * On E2B sandboxes, uses curl through the sandbox shell.
+ * Uses curl through the sandbox shell.
  */
 const GRAPHQL_TIMEOUT = 15_000;
 
@@ -634,17 +600,11 @@ async function runGql(
 
   const { sandbox } = await context.sandboxManager.getSandbox();
 
-  if (isCentrifugoSandbox(sandbox)) {
-    return runGqlLocal(context, query, variables);
-  }
   return runGqlViaSandbox(context, sandbox, query, variables);
 }
 
 /**
  * Local path: fetch from Node.js directly.
- * Works because on local sandboxes, Caido listens on the same machine.
- * Avoids the curl-through-CentrifugoSandbox path that Caido's proxy dispatcher
- * misroutes on macOS (exit 56).
  */
 async function readCaidoTokenFromDisk(
   context: ToolContext,

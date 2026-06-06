@@ -309,7 +309,7 @@ export function ModelSelector({ value, onChange, mode }: ModelSelectorProps) {
       aria-haspopup={isMobile ? "dialog" : undefined}
       className="h-7 px-2 gap-1 text-sm font-medium rounded-md bg-transparent hover:bg-muted/30 focus-visible:ring-1 min-w-0 shrink"
     >
-      <span className="truncate">{triggerLabel}</span>
+      <span className="truncate" suppressHydrationWarning>{triggerLabel}</span>
       <ChevronDown className="h-3 w-3 ml-0.5 shrink-0" />
     </Button>
   );
