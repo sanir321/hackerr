@@ -40,7 +40,6 @@
     "s3:validate": "npx ts-node scripts/validate-s3-security.ts",
     "e2b:build:dev": "npx tsx e2b/build.dev.ts",
     "e2b:build:prod": "npx tsx e2b/build.prod.ts",
-
     "desktop:dev": "cd packages/desktop && pnpm dev",
     "desktop:build": "cd packages/desktop && pnpm build",
     "docker:build": "docker buildx build --load -t umbraa/sandbox:latest -f docker/Dockerfile docker/",
@@ -107,7 +106,7 @@
     "mammoth": "^1.12.0",
     "marked": "^18.0.4",
     "motion": "^12.40.0",
-    "next": "15.5.0",
+    "next": "^16.2.7",
     "next-themes": "^0.4.6",
     "openai": "6.39.0",
     "pdfjs-serverless": "^1.2.3",
