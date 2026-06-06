@@ -1,5 +1,5 @@
-import { authkit } from "@workos-inc/authkit-nextjs";
 import { NextRequest, NextResponse, NextFetchEvent } from "next/server";
+import { authkit } from "@workos-inc/authkit-nextjs";
 
 const REFERRAL_COOKIE_NAME = "umbraa_ref";
 const REFERRAL_COOKIE_CREATED_AT_NAME = "umbraa_ref_at";
