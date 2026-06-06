@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo } from "react";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
 
 const HACKING_QUESTIONS = [
@@ -28,10 +28,11 @@ const HACKING_QUESTIONS = [
 export const HackingSuggestions = () => {
   const { user } = useAuth();
   const name = user?.firstName || undefined;
-  const [questionFn] = useState(
-    () =>
-      HACKING_QUESTIONS[Math.floor(Math.random() * HACKING_QUESTIONS.length)],
-  );
+  const questionFn = useMemo(() => {
+    if (!name) return HACKING_QUESTIONS[0];
+    const seed = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+    return HACKING_QUESTIONS[seed % HACKING_QUESTIONS.length];
+  }, [name]);
 
   return (
     <div className="relative mb-4 flex flex-col items-center px-4 text-center md:mb-6">
