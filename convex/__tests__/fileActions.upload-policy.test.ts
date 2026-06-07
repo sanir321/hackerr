@@ -38,17 +38,8 @@ jest.mock("../_generated/api", () => ({
   internal: {
     fileStorage: {
       saveFileToDb: "internal.fileStorage.saveFileToDb",
-      getFileByS3Key: "internal.fileStorage.getFileByS3Key",
-    },
-    s3Cleanup: {
-      deleteS3ObjectAction: "internal.s3Cleanup.deleteS3ObjectAction",
     },
   },
-}));
-
-jest.mock("../s3Utils", () => ({
-  generateS3DownloadUrl: jest.fn(),
-  getS3ObjectSizeBytes: jest.fn(),
 }));
 
 jest.mock("pdfjs-serverless", () => ({
@@ -132,27 +123,14 @@ describe("fileActions saveFile upload policy", () => {
       storage: {
         delete: jest.fn().mockResolvedValue(undefined),
         getUrl: jest.fn().mockResolvedValue("https://storage.example/file"),
-        getMetadata: jest.fn().mockResolvedValue({ size: 1024 }),
+        getMetadata: jest.fn().mockImplementation(async (storageId: string) => {
+          if (storageId.includes("large.bin")) return { size: 21 * 1024 * 1024 };
+          if (storageId.includes("large.png")) return { size: 8 * 1024 * 1024 };
+          if (storageId.includes("archive.zip")) return { size: 25 * 1024 * 1024 };
+          if (storageId.includes("huge.bin")) return { size: 251 * 1024 * 1024 };
+          return { size: 1024 };
+        }),
       },
-      runQuery: jest.fn(async (_fn: unknown, args: { s3Key?: string }) => ({
-        _id: "file_reservation_123",
-        s3_key: args.s3Key,
-        user_id: "user123",
-        name: "reserved.txt",
-        media_type: "text/plain",
-        size: args.s3Key?.includes("large.bin")
-          ? 21 * 1024 * 1024
-          : args.s3Key?.includes("large.png")
-            ? 8 * 1024 * 1024
-            : args.s3Key?.includes("archive.zip")
-              ? 25 * 1024 * 1024
-              : args.s3Key?.includes("huge.bin")
-                ? 251 * 1024 * 1024
-                : 1024,
-        file_token_size: 0,
-        is_attached: false,
-        _creationTime: Date.now(),
-      })),
       runMutation: jest.fn().mockResolvedValue("file_123"),
     }) as any;
 
@@ -161,34 +139,19 @@ describe("fileActions saveFile upload policy", () => {
     delete process.env.UPSTASH_REDIS_REST_URL;
     delete process.env.UPSTASH_REDIS_REST_TOKEN;
     global.fetch = jest.fn() as any;
-
-    const { generateS3DownloadUrl, getS3ObjectSizeBytes } =
-      await import("../s3Utils");
-    (generateS3DownloadUrl as jest.Mock).mockResolvedValue(
-      "https://s3.example/download",
-    );
-    (getS3ObjectSizeBytes as jest.Mock).mockImplementation(
-      async (s3Key: string) => {
-        if (s3Key.includes("large.bin")) return 21 * 1024 * 1024;
-        if (s3Key.includes("large.png")) return 8 * 1024 * 1024;
-        if (s3Key.includes("archive.zip")) return 25 * 1024 * 1024;
-        if (s3Key.includes("huge.bin")) return 251 * 1024 * 1024;
-        return 1024;
-      },
-    );
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
   });
 
-  it("rejects Ask files above the backend file cap and cleans up S3", async () => {
+  it("rejects Ask files above the backend file cap and cleans up storage", async () => {
     const { saveFile } = await import("../fileActions");
     const ctx = makeCtx();
 
     await expect(
       saveFile.handler(ctx, {
-        s3Key: "users/user123/large.bin",
+        storageId: "storage_large_bin" as any,
         name: "large.bin",
         mediaType: "application/octet-stream",
         size: 21 * 1024 * 1024,
@@ -198,103 +161,7 @@ describe("fileActions saveFile upload policy", () => {
       data: expect.objectContaining({ code: "FILE_SIZE_EXCEEDED" }),
     });
 
-    expect(ctx.scheduler.runAfter).toHaveBeenCalledWith(
-      0,
-      "internal.s3Cleanup.deleteS3ObjectAction",
-      { s3Key: "users/user123/large.bin" },
-    );
-    expect(global.fetch).not.toHaveBeenCalled();
-    expect(ctx.runMutation).not.toHaveBeenCalled();
-  });
-
-  it("rejects S3 uploads when the actual object size differs from the reservation", async () => {
-    const { saveFile } = await import("../fileActions");
-    const ctx = makeCtx();
-    ctx.runQuery.mockResolvedValueOnce({
-      _id: "file_reservation_123",
-      s3_key: "users/user123/notes.txt",
-      user_id: "user123",
-      name: "notes.txt",
-      media_type: "text/plain",
-      size: 512,
-      file_token_size: 0,
-      is_attached: false,
-      _creationTime: Date.now(),
-    });
-
-    await expect(
-      saveFile.handler(ctx, {
-        s3Key: "users/user123/notes.txt",
-        name: "notes.txt",
-        mediaType: "text/plain",
-        size: 512,
-        mode: "ask",
-      }),
-    ).rejects.toMatchObject({
-      data: expect.objectContaining({ code: "FILE_SIZE_MISMATCH" }),
-    });
-
-    expect(ctx.scheduler.runAfter).toHaveBeenCalledWith(
-      0,
-      "internal.s3Cleanup.deleteS3ObjectAction",
-      { s3Key: "users/user123/notes.txt" },
-    );
-    expect(global.fetch).not.toHaveBeenCalled();
-    expect(ctx.runMutation).not.toHaveBeenCalled();
-  });
-
-  it("rejects cross-user S3 reservations without deleting the object", async () => {
-    const { saveFile } = await import("../fileActions");
-    const ctx = makeCtx();
-    ctx.runQuery.mockResolvedValueOnce({
-      _id: "file_reservation_victim",
-      s3_key: "users/victim/notes.txt",
-      user_id: "victim",
-      name: "notes.txt",
-      media_type: "text/plain",
-      size: 1024,
-      file_token_size: 0,
-      is_attached: false,
-      _creationTime: Date.now(),
-    });
-
-    await expect(
-      saveFile.handler(ctx, {
-        s3Key: "users/victim/notes.txt",
-        name: "notes.txt",
-        mediaType: "text/plain",
-        size: 1024,
-        mode: "ask",
-      }),
-    ).rejects.toMatchObject({
-      data: expect.objectContaining({
-        code: "UNAUTHORIZED_UPLOAD_RESERVATION",
-      }),
-    });
-
-    expect(ctx.scheduler.runAfter).not.toHaveBeenCalled();
-    expect(global.fetch).not.toHaveBeenCalled();
-    expect(ctx.runMutation).not.toHaveBeenCalled();
-  });
-
-  it("does not delete unreserved S3 keys outside the acting user's prefix", async () => {
-    const { saveFile } = await import("../fileActions");
-    const ctx = makeCtx();
-    ctx.runQuery.mockResolvedValueOnce(null);
-
-    await expect(
-      saveFile.handler(ctx, {
-        s3Key: "users/victim/orphan.txt",
-        name: "orphan.txt",
-        mediaType: "text/plain",
-        size: 1024,
-        mode: "ask",
-      }),
-    ).rejects.toMatchObject({
-      data: expect.objectContaining({ code: "INVALID_UPLOAD_RESERVATION" }),
-    });
-
-    expect(ctx.scheduler.runAfter).not.toHaveBeenCalled();
+    expect(ctx.storage.delete).toHaveBeenCalledWith("storage_large_bin");
     expect(global.fetch).not.toHaveBeenCalled();
     expect(ctx.runMutation).not.toHaveBeenCalled();
   });
@@ -302,11 +169,13 @@ describe("fileActions saveFile upload policy", () => {
   it("rejects storageId uploads based on storage metadata, not client size", async () => {
     const { saveFile } = await import("../fileActions");
     const ctx = makeCtx();
-    ctx.storage.getMetadata.mockResolvedValueOnce({ size: 21 * 1024 * 1024 });
+    (ctx.storage.getMetadata as jest.Mock).mockResolvedValueOnce({
+      size: 21 * 1024 * 1024,
+    });
 
     await expect(
       saveFile.handler(ctx, {
-        storageId: "storage_large_bin",
+        storageId: "storage_large_bin" as any,
         name: "large.bin",
         mediaType: "application/octet-stream",
         size: 1024,
@@ -328,10 +197,10 @@ describe("fileActions saveFile upload policy", () => {
 
     await expect(
       saveFile.handler(ctx, {
-        s3Key: "users/user123/large.png",
+        storageId: "storage_large_png" as any,
         name: "large.png",
         mediaType: "image/png",
-        size: 6 * 1024 * 1024,
+        size: 8 * 1024 * 1024,
         mode: "ask",
       }),
     ).rejects.toMatchObject({
@@ -347,7 +216,7 @@ describe("fileActions saveFile upload policy", () => {
     const ctx = makeCtx();
 
     const result = await saveFile.handler(ctx, {
-      s3Key: "users/user123/archive.zip",
+      storageId: "storage_archive_zip" as any,
       name: "archive.zip",
       mediaType: "application/zip",
       size: 25 * 1024 * 1024,
@@ -355,7 +224,7 @@ describe("fileActions saveFile upload policy", () => {
     });
 
     expect(result).toEqual({
-      url: "https://s3.example/download",
+      url: "https://storage.example/file",
       fileId: "file_123",
       tokens: 0,
     });
@@ -363,7 +232,7 @@ describe("fileActions saveFile upload policy", () => {
     expect(ctx.runMutation).toHaveBeenCalledWith(
       "internal.fileStorage.saveFileToDb",
       expect.objectContaining({
-        s3Key: "users/user123/archive.zip",
+        storageId: "storage_archive_zip",
         size: 25 * 1024 * 1024,
         fileTokenSize: 0,
         content: undefined,
@@ -376,7 +245,7 @@ describe("fileActions saveFile upload policy", () => {
     const ctx = makeCtx();
 
     await saveFile.handler(ctx, {
-      s3Key: "users/user123/notes.txt",
+      storageId: "storage_notes_txt" as any,
       name: "notes.txt",
       mediaType: "text/plain",
       size: 1024,
@@ -399,7 +268,7 @@ describe("fileActions saveFile upload policy", () => {
     const ctx = makeCtx();
 
     await saveFile.handler(ctx, {
-      s3Key: "users/user123/large.png",
+      storageId: "storage_large_png" as any,
       name: "large.png",
       mediaType: "image/png",
       size: 8 * 1024 * 1024,
@@ -423,7 +292,7 @@ describe("fileActions saveFile upload policy", () => {
 
     await expect(
       saveFile.handler(ctx, {
-        s3Key: "users/user123/huge.bin",
+        storageId: "storage_huge_bin" as any,
         name: "huge.bin",
         mediaType: "application/octet-stream",
         size: 251 * 1024 * 1024,

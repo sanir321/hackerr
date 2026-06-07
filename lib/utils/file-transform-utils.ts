@@ -304,13 +304,41 @@ const fetchFileUrls = async (
   }
 
   try {
-    return await getConvexClient().action(
-      api.s3Actions.getFileUrlsByFileIdsAction,
+    // 1. Get file metadata to find storageIds
+    const fileMetadata = await getConvexClient().query(
+      api.fileStorage.getFileMetadataByFileIds,
       {
         serviceKey,
         userId,
         fileIds: fileIds as Id<"files">[],
       },
+    );
+
+    const storageIds = fileMetadata
+      .map((f) => f?.storageId)
+      .filter((id): id is Id<"_storage"> => !!id);
+
+    if (storageIds.length === 0) return fileIds.map(() => null);
+
+    // 2. Fetch URLs for these storageIds
+    const urls = await getConvexClient().action(
+      api.fileStorage.getFileUrlsBatchAction,
+      {
+        storageIds: storageIds as string[],
+      },
+    );
+
+    // 3. Map back to the original fileIds order
+    const storageIdToUrl = new Map<string, string>();
+    storageIds.forEach((id, index) => {
+      const url = urls[index];
+      if (url) {
+        storageIdToUrl.set(id as string, url);
+      }
+    });
+
+    return fileMetadata.map((f) =>
+      f?.storageId ? (storageIdToUrl.get(f.storageId) ?? null) : null,
     );
   } catch (error) {
     logger.warn("file_url_fetch_failed", {

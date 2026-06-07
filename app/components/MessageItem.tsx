@@ -263,7 +263,7 @@ export const MessageItem = memo(function MessageItem({
 
   const savedFiles = useMemo(() => {
     if (isUser || !effectiveFileDetails) return [];
-    return effectiveFileDetails.filter((f) => f.url || f.storageId || f.s3Key);
+    return effectiveFileDetails.filter((f) => f.url || f.storageId);
   }, [isUser, effectiveFileDetails]);
 
   const renderAssistantPart = (
@@ -557,8 +557,6 @@ export const MessageItem = memo(function MessageItem({
                     part={{
                       url: savedFiles[savedFiles.length - 1].url ?? undefined,
                       storageId: savedFiles[savedFiles.length - 1].storageId,
-                      fileId: savedFiles[savedFiles.length - 1].fileId,
-                      s3Key: savedFiles[savedFiles.length - 1].s3Key,
                       name: savedFiles[savedFiles.length - 1].name,
                       filename: savedFiles[savedFiles.length - 1].name,
                       mediaType: savedFiles[savedFiles.length - 1].mediaType,
@@ -593,8 +591,6 @@ export const MessageItem = memo(function MessageItem({
                     part={{
                       url: file.url ?? undefined,
                       storageId: file.storageId,
-                      fileId: file.fileId,
-                      s3Key: file.s3Key,
                       name: file.name,
                       filename: file.name,
                       mediaType: file.mediaType,

@@ -75,11 +75,18 @@ const SidebarPreviewImage = ({
   label: string;
 }) => {
   const convex = useConvex();
-  const getFileUrlAction = useAction(api.s3Actions.getFileUrlAction);
   const fileUrlCache = useFileUrlCacheContext();
   const [fileUrl, setFileUrl] = useState<string | null>(() => {
-    if (file.fileId && fileUrlCache) {
-      return fileUrlCache.getCachedUrl(file.fileId) || null;
+    // Try to get from cache using storageId (primary) or fileId (fallback)
+    if (fileUrlCache) {
+      if (file.storageId) {
+        const cached = fileUrlCache.getCachedUrl(file.storageId);
+        if (cached) return cached;
+      }
+      if (file.fileId) {
+        const cached = fileUrlCache.getCachedUrl(file.fileId);
+        if (cached) return cached;
+      }
     }
     return file.url || null;
   });
@@ -95,11 +102,21 @@ const SidebarPreviewImage = ({
         return;
       }
 
-      if (file.fileId && fileUrlCache) {
-        const cachedUrl = fileUrlCache.getCachedUrl(file.fileId);
-        if (cachedUrl) {
-          setFileUrl(cachedUrl);
-          return;
+      // Check cache again in effect
+      if (fileUrlCache) {
+        if (file.storageId) {
+          const cached = fileUrlCache.getCachedUrl(file.storageId);
+          if (cached) {
+            setFileUrl(cached);
+            return;
+          }
+        }
+        if (file.fileId) {
+          const cached = fileUrlCache.getCachedUrl(file.fileId);
+          if (cached) {
+            setFileUrl(cached);
+            return;
+          }
         }
       }
 
@@ -107,15 +124,28 @@ const SidebarPreviewImage = ({
         setError(null);
         let url: string | null = null;
 
-        if (file.fileId) {
-          url = await getFileUrlAction({ fileId: file.fileId });
-          if (url && fileUrlCache) {
-            fileUrlCache.setCachedUrl(file.fileId, url);
-          }
-        } else if (file.storageId) {
+        if (file.storageId) {
+          // Fetch URL from Convex storage using storageId
           url = await convex.query(api.fileStorage.getFileDownloadUrl, {
             storageId: file.storageId,
           });
+          // Cache it
+          if (url && fileUrlCache) {
+            fileUrlCache.setCachedUrl(file.storageId, url);
+          }
+        } else if (file.fileId) {
+          // Resolve storageId from fileId
+          const fileDoc = await convex.query(api.fileStorage.getFileMetadata, {
+            fileId: file.fileId as Id<"files">,
+          });
+          if (fileDoc?.storage_id) {
+            url = await convex.query(api.fileStorage.getFileDownloadUrl, {
+              storageId: fileDoc.storage_id,
+            });
+            if (url && fileUrlCache) {
+              fileUrlCache.setCachedUrl(file.fileId, url);
+            }
+          }
         }
 
         if (!cancelled) {
@@ -141,14 +171,7 @@ const SidebarPreviewImage = ({
     return () => {
       cancelled = true;
     };
-  }, [
-    convex,
-    file.fileId,
-    file.storageId,
-    file.url,
-    fileUrlCache,
-    getFileUrlAction,
-  ]);
+  }, [convex, file.fileId, file.storageId, file.url, fileUrlCache]);
 
   if (error) {
     return (
@@ -740,7 +763,6 @@ export const ComputerSidebarBase: React.FC<ComputerSidebarProps> = ({
                                     fileId: file.fileId as
                                       | Id<"files">
                                       | undefined,
-                                    s3Key: file.s3Key,
                                     storageId: file.storageId,
                                     name: file.name,
                                     filename: file.name,

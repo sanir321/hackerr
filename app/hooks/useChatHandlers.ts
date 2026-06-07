@@ -317,9 +317,6 @@ export const useChatHandlers = ({
         });
         return;
       }
-      if (!isExistingChat && !temporaryChatsEnabledRef.current) {
-        window.history.replaceState({}, "", `/c/${chatId}`);
-      }
 
       try {
         // Get file objects from uploaded files - URLs are already resolved in global state

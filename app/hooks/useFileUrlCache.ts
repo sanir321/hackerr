@@ -2,43 +2,44 @@ import { useEffect, useRef, useCallback } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { isSupportedImageMediaType } from "@/lib/utils/file-utils";
-import type { ChatMessage } from "@/types";
+import { isSupportedImageMediaType } from "@/lib/utils/upload-policy";
+import type { ChatMessage } from "@/types/chat";
+
+const URL_CACHE_EXPIRATION = 50 * 60 * 1000; // 50 minutes (signed URLs expire in 1 hour)
+const MAX_BATCH_SIZE = 50;
 
 interface CachedUrl {
   url: string;
   timestamp: number;
 }
 
-const URL_CACHE_EXPIRATION = 50 * 60 * 1000; // 50 minutes (S3 URLs expire in 1 hour)
-const MAX_BATCH_SIZE = 50; // Must match server-side limit in convex/s3Actions.ts
-
 /**
  * Hook to manage prefetching and caching of file URLs
  *
  * Features:
- * - Batch prefetches URLs for all S3 image files in messages (images need eager loading)
- * - Caches URLs with expiration handling (50 min, before 1 hour S3 expiry)
+ * - Batch prefetches URLs for all image files in messages (images need eager loading)
+ * - Caches URLs with expiration handling
  * - Provides methods to get and set cached URLs (for lazy-loaded non-image files)
  * - Automatically cleans up expired URLs
  */
 export function useFileUrlCache(messages: ChatMessage[]) {
   const getFileUrlsBatchAction = useAction(
-    api.s3Actions.getFileUrlsBatchAction,
+    api.fileStorage.getFileUrlsBatchAction,
   );
   const urlCacheRef = useRef<Map<string, CachedUrl>>(new Map());
   const prefetchedIdsRef = useRef<Set<string>>(new Set());
 
   // Get cached URL for a file (returns null if expired or not cached)
-  const getCachedUrl = useCallback((fileId: string): string | null => {
-    const cached = urlCacheRef.current.get(fileId);
+  // Keyed by fileId OR storageId
+  const getCachedUrl = useCallback((key: string): string | null => {
+    const cached = urlCacheRef.current.get(key);
     if (!cached) return null;
 
     // Check if URL has expired
     const now = Date.now();
     if (now - cached.timestamp > URL_CACHE_EXPIRATION) {
-      urlCacheRef.current.delete(fileId);
-      prefetchedIdsRef.current.delete(fileId);
+      urlCacheRef.current.delete(key);
+      prefetchedIdsRef.current.delete(key);
       return null;
     }
 
@@ -46,43 +47,38 @@ export function useFileUrlCache(messages: ChatMessage[]) {
   }, []);
 
   // Set/update cached URL for a file (used for lazy-loaded non-image files)
-  const setCachedUrl = useCallback((fileId: string, url: string) => {
+  const setCachedUrl = useCallback((key: string, url: string) => {
     const now = Date.now();
-    urlCacheRef.current.set(fileId, { url, timestamp: now });
-    prefetchedIdsRef.current.add(fileId);
+    urlCacheRef.current.set(key, { url, timestamp: now });
+    prefetchedIdsRef.current.add(key);
   }, []);
 
   // Prefetch image URLs for messages
   useEffect(() => {
     async function prefetchImageUrls() {
-      // Track seen fileIds within this run to avoid duplicates
+      // Track seen storageIds within this run to avoid duplicates
       const seenInThisRun = new Set<string>();
-      const s3ImageFiles: Array<{
-        fileId: Id<"files">;
-        mediaType: string;
-      }> = [];
+      const storageIds: string[] = [];
 
       for (const message of messages) {
         if (!message.fileDetails) continue;
 
         for (const file of message.fileDetails) {
           // Only process files that:
-          // 1. Have an S3 key (not Convex storage)
+          // 1. Have a storageId
           // 2. Are supported image types
           // 3. Haven't been prefetched yet
           // 4. Haven't been seen in this run
+          const storageIdStr = file.storageId ? String(file.storageId) : "";
           if (
-            file.s3Key &&
+            storageIdStr &&
             file.mediaType &&
             isSupportedImageMediaType(file.mediaType) &&
-            !prefetchedIdsRef.current.has(file.fileId) &&
-            !seenInThisRun.has(file.fileId)
+            !prefetchedIdsRef.current.has(storageIdStr) &&
+            !seenInThisRun.has(storageIdStr)
           ) {
-            s3ImageFiles.push({
-              fileId: file.fileId,
-              mediaType: file.mediaType,
-            });
-            seenInThisRun.add(file.fileId);
+            storageIds.push(storageIdStr);
+            seenInThisRun.add(storageIdStr);
           }
         }
       }
@@ -92,52 +88,50 @@ export function useFileUrlCache(messages: ChatMessage[]) {
         for (const part of message.parts) {
           if (
             part.type === "file" &&
-            "fileId" in part &&
-            "s3Key" in part &&
-            part.s3Key &&
+            "storageId" in part &&
+            part.storageId &&
             part.mediaType &&
-            isSupportedImageMediaType(part.mediaType) &&
-            typeof part.fileId === "string" &&
-            !prefetchedIdsRef.current.has(part.fileId) &&
-            !seenInThisRun.has(part.fileId)
+            isSupportedImageMediaType(part.mediaType)
           ) {
-            s3ImageFiles.push({
-              fileId: part.fileId as Id<"files">,
-              mediaType: part.mediaType,
-            });
-            seenInThisRun.add(part.fileId);
+            const storageIdStr = String(part.storageId);
+            if (
+              !prefetchedIdsRef.current.has(storageIdStr) &&
+              !seenInThisRun.has(storageIdStr)
+            ) {
+              storageIds.push(storageIdStr);
+              seenInThisRun.add(storageIdStr);
+            }
           }
         }
       }
 
       // If no new images to prefetch, return early
-      if (s3ImageFiles.length === 0) {
+      if (storageIds.length === 0) {
         return;
       }
 
-      // Batch fetch URLs with deduplicated fileIds, chunked to respect server limit
+      // Batch fetch URLs with deduplicated storageIds, chunked to respect server limit
       try {
-        const fileIds = s3ImageFiles.map((f) => f.fileId);
-        const chunks: Array<Array<Id<"files">>> = [];
-        for (let i = 0; i < fileIds.length; i += MAX_BATCH_SIZE) {
-          chunks.push(fileIds.slice(i, i + MAX_BATCH_SIZE));
+        const chunks: Array<Array<string>> = [];
+        for (let i = 0; i < storageIds.length; i += MAX_BATCH_SIZE) {
+          chunks.push(storageIds.slice(i, i + MAX_BATCH_SIZE));
         }
 
-        const urlMaps = await Promise.all(
-          chunks.map((chunk) => getFileUrlsBatchAction({ fileIds: chunk })),
+        const urlResults = await Promise.all(
+          chunks.map((chunk) => getFileUrlsBatchAction({ storageIds: chunk })),
         );
 
         const now = Date.now();
-        for (const urlMap of urlMaps) {
-          if (urlMap && typeof urlMap === "object") {
-            for (const [fileId, url] of Object.entries(urlMap) as Array<
-              [string, string]
-            >) {
-              urlCacheRef.current.set(fileId, { url, timestamp: now });
-              prefetchedIdsRef.current.add(fileId);
+        urlResults.forEach((urls: (string | null)[], chunkIndex: number) => {
+          const chunkStorageIds = chunks[chunkIndex];
+          urls.forEach((url: string | null, index: number) => {
+            if (url) {
+              const storageId = chunkStorageIds[index];
+              urlCacheRef.current.set(storageId, { url, timestamp: now });
+              prefetchedIdsRef.current.add(storageId);
             }
-          }
-        }
+          });
+        });
       } catch (error) {
         console.error("Failed to prefetch image URLs:", error);
       }
@@ -146,22 +140,16 @@ export function useFileUrlCache(messages: ChatMessage[]) {
     prefetchImageUrls();
   }, [messages, getFileUrlsBatchAction]);
 
-  // Cleanup expired URLs periodically
+  // Periodic cleanup of expired entries
   useEffect(() => {
     const cleanupInterval = setInterval(
       () => {
         const now = Date.now();
-        const entriesToDelete: string[] = [];
-
-        for (const [fileId, cached] of urlCacheRef.current.entries()) {
+        for (const [key, cached] of urlCacheRef.current.entries()) {
           if (now - cached.timestamp > URL_CACHE_EXPIRATION) {
-            entriesToDelete.push(fileId);
+            urlCacheRef.current.delete(key);
+            prefetchedIdsRef.current.delete(key);
           }
-        }
-
-        for (const fileId of entriesToDelete) {
-          urlCacheRef.current.delete(fileId);
-          prefetchedIdsRef.current.delete(fileId);
         }
       },
       5 * 60 * 1000,

@@ -629,9 +629,9 @@ export const getMessagesByChatId = query({
               fileId: v.id("files"),
               name: v.string(),
               mediaType: v.optional(v.string()),
+              size: v.optional(v.number()),
               url: v.optional(v.union(v.string(), v.null())),
               storageId: v.optional(v.string()),
-              s3Key: v.optional(v.string()),
             }),
           ),
         ),
@@ -689,8 +689,8 @@ export const getMessagesByChatId = query({
       // Step 3: Build file details lookup map for O(1) access
       // DON'T generate URLs here - they expire and get cached with the query!
       // Frontend will fetch URLs on-demand via actions (avoids stale cached URLs)
-      // V8-SAFE: This query does NOT call generateS3DownloadUrl or any Node.js built-ins.
-      // Only file metadata (fileId, name, mediaType, s3Key, storageId) is returned.
+      // V8-SAFE: This query does NOT call any Node.js built-ins.
+      // Only file metadata (fileId, name, mediaType, storageId) is returned.
       const fileDetailsMap = new Map();
       files.forEach((file, index) => {
         if (file && file.user_id === user.subject) {
@@ -698,9 +698,8 @@ export const getMessagesByChatId = query({
             fileId: fileIdArray[index],
             name: file.name,
             mediaType: file.media_type,
-            // url: removed - generate on-demand to avoid caching expired URLs
+            size: file.size,
             storageId: file.storage_id,
-            s3Key: file.s3_key,
           });
         }
       });
@@ -946,13 +945,7 @@ export const deleteLastAssistantMessage = mutation({
               try {
                 const file = await ctx.db.get(storageId);
                 if (file) {
-                  if (file.s3_key) {
-                    await ctx.scheduler.runAfter(
-                      0,
-                      internal.s3Cleanup.deleteS3ObjectAction,
-                      { s3Key: file.s3_key },
-                    );
-                  } else if (file.storage_id) {
+                  if (file.storage_id) {
                     await ctx.storage.delete(file.storage_id);
                   }
                   await fileCountAggregate.deleteIfExists(ctx, file);
@@ -1614,14 +1607,7 @@ export const regenerateWithNewContent = mutation({
         try {
           const file = await ctx.db.get(fileId);
           if (file) {
-            // Delete from appropriate storage
-            if (file.s3_key) {
-              await ctx.scheduler.runAfter(
-                0,
-                internal.s3Cleanup.deleteS3ObjectAction,
-                { s3Key: file.s3_key },
-              );
-            } else if (file.storage_id) {
+            if (file.storage_id) {
               await ctx.storage.delete(file.storage_id);
             }
             // Delete from aggregate
@@ -1681,14 +1667,7 @@ export const regenerateWithNewContent = mutation({
             try {
               const file = await ctx.db.get(fileId);
               if (file) {
-                // Delete from appropriate storage
-                if (file.s3_key) {
-                  await ctx.scheduler.runAfter(
-                    0,
-                    internal.s3Cleanup.deleteS3ObjectAction,
-                    { s3Key: file.s3_key },
-                  );
-                } else if (file.storage_id) {
+                if (file.storage_id) {
                   await ctx.storage.delete(file.storage_id);
                 }
                 // Delete from aggregate
@@ -1765,7 +1744,7 @@ export const getSharedMessages = query({
     try {
       // Validate UUID format
       const UUID_REGEX =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[0-9a-f]{12}$/i;
       if (!UUID_REGEX.test(args.chatId)) {
         return [];
       }
@@ -1848,8 +1827,8 @@ export const getPreviewMessages = query({
             fileId: v.id("files"),
             name: v.string(),
             mediaType: v.optional(v.string()),
+            size: v.optional(v.number()),
             storageId: v.optional(v.string()),
-            s3Key: v.optional(v.string()),
           }),
         ),
       ),
@@ -1906,8 +1885,8 @@ export const getPreviewMessages = query({
             fileId: fileIdArray[index],
             name: file.name,
             mediaType: file.media_type,
+            size: file.size,
             storageId: file.storage_id,
-            s3Key: file.s3_key,
           });
         }
       });

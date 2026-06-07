@@ -1,133 +1,78 @@
-import { mutation } from "./_generated/server";
-import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { mutation, internalMutation } from "./_generated/server";
+import { v, ConvexError } from "convex/values";
+import { api, internal } from "./_generated/api";
 import { fileCountAggregate } from "./fileAggregate";
+import { validateServiceKey } from "./lib/utils";
+import { convexLogger } from "./lib/logger";
 
 /**
- * Delete all data for the authenticated user in correct dependency order.
- *
- * Deletion order (respects foreign key constraints):
- * 1) Feedback records (referenced by messages)
- * 2) Messages (owned by user, reference chats and files)
- * 3) Chats (owned by user)
- * 4) Files + storage (owned by user, may be referenced by messages)
- *    - S3 files: Batch deleted using scheduled action
- *    - Convex storage files: Deleted directly
- * 5) Memories (owned by user)
- * 6) Notes (owned by user)
- * 7) User customization (owned by user)
- *
- * Uses parallel queries and deletions for optimal performance.
- * S3 cleanup is scheduled asynchronously and errors don't block user deletion.
+ * Public mutation to delete all data for the currently authenticated user.
  */
-export const deleteAllUserData = mutation({
+export const deleteMyUserData = mutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const user = await ctx.auth.getUserIdentity();
-    if (!user) {
-      throw new Error("Unauthorized: User not authenticated");
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Unauthorized: User not authenticated",
+      });
     }
 
+    // Reuse the internal logic by calling the internal mutation
+    // We need to pass the service key which is available in process.env
+    await ctx.runMutation(internal.userDeletion.deleteAllUserData, {
+      serviceKey: process.env.CONVEX_SERVICE_ROLE_KEY!,
+      userId: identity.subject,
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Internal mutation to delete all data for a user.
+ * This is a multi-step process that cleans up all associated records.
+ *
+ * @param serviceKey - Required server-side validation key
+ * @param userId - The ID of the user whose data should be deleted
+ */
+export const deleteAllUserData = internalMutation({
+  args: {
+    serviceKey: v.string(),
+    userId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    validateServiceKey(args.serviceKey);
+
+    const startTime = Date.now();
+    convexLogger.info("user_deletion_started", {
+      userId: args.userId,
+    });
+
     try {
-      // Fetch all user data in parallel using indexed queries
-      const [chats, files, memories, notes, customization, messagesByUser] =
-        await Promise.all([
-          ctx.db
-            .query("chats")
-            .withIndex("by_user_and_updated", (q) =>
-              q.eq("user_id", user.subject),
-            )
-            .collect(),
-          ctx.db
-            .query("files")
-            .withIndex("by_user_id", (q) => q.eq("user_id", user.subject))
-            .collect(),
-          ctx.db
-            .query("memories")
-            .withIndex("by_user_and_update_time", (q) =>
-              q.eq("user_id", user.subject),
-            )
-            .collect(),
-          ctx.db
-            .query("notes")
-            .withIndex("by_user_and_updated", (q) =>
-              q.eq("user_id", user.subject),
-            )
-            .collect(),
-          ctx.db
-            .query("user_customization")
-            .withIndex("by_user_id", (q) => q.eq("user_id", user.subject))
-            .first(),
-          ctx.db
-            .query("messages")
-            .withIndex("by_user_id", (q) => q.eq("user_id", user.subject))
-            .collect(),
-        ]);
+      // Step 1: Delete all chats and their messages/files
+      // This uses existing mutation logic which handles file cleanup
+      await ctx.runMutation(api.chats.deleteAllChatsForUser, {
+        serviceKey: args.serviceKey,
+        userId: args.userId,
+      });
 
-      // All user-owned messages (assistant/system messages also have user_id in this app)
-      const allMessages = messagesByUser;
+      // Step 2: Delete any orphaned files not caught by chat deletion
+      // (e.g., uploaded but never sent in a message)
+      const orphanedFiles = await ctx.db
+        .query("files")
+        .withIndex("by_user_id", (q) => q.eq("user_id", args.userId))
+        .collect();
 
-      // Step 1: Delete feedback records (no dependencies)
-      const feedbackIds = allMessages
-        .map((m) => m.feedback_id)
-        .filter((id): id is NonNullable<typeof id> => !!id);
-
-      await Promise.all(
-        feedbackIds.map(async (feedbackId) => {
+      if (orphanedFiles.length > 0) {
+        for (const file of orphanedFiles) {
           try {
-            await ctx.db.delete(feedbackId);
-          } catch (error) {
-            console.error(`Failed to delete feedback ${feedbackId}:`, error);
-          }
-        }),
-      );
-
-      // Step 2: Delete messages (now safe since feedback is gone)
-      await Promise.all(
-        allMessages.map(async (message) => {
-          try {
-            await ctx.db.delete(message._id);
-          } catch (error) {
-            console.error(`Failed to delete message ${message._id}:`, error);
-          }
-        }),
-      );
-
-      // Step 3: Delete chats (now safe since messages are gone)
-      await Promise.all(
-        chats.map(async (chat) => {
-          try {
-            await ctx.db.delete(chat._id);
-          } catch (error) {
-            console.error(`Failed to delete chat ${chat._id}:`, error);
-          }
-        }),
-      );
-
-      // Step 4: Delete files and storage blobs (safe since messages no longer reference them)
-
-      // Collect S3 keys for batch deletion
-      const s3Keys: string[] = [];
-
-      await Promise.all(
-        files.map(async (file) => {
-          try {
-            // Handle S3 files
-            if (file.s3_key) {
-              s3Keys.push(file.s3_key);
-            }
-            // Handle Convex storage files
+            // Delete from Convex storage
             if (file.storage_id) {
-              try {
-                await ctx.storage.delete(file.storage_id);
-              } catch (e) {
-                console.warn(
-                  "Failed to delete storage blob:",
-                  file.storage_id,
-                  e,
-                );
-              }
+              await ctx.storage.delete(file.storage_id);
             }
 
             // Delete from aggregate
@@ -136,68 +81,95 @@ export const deleteAllUserData = mutation({
             // Delete database record
             await ctx.db.delete(file._id);
           } catch (error) {
-            console.error(`Failed to delete file record ${file._id}:`, error);
+            console.error(
+              `Failed to delete orphaned file ${file._id} for user ${args.userId}:`,
+              error,
+            );
           }
-        }),
-      );
-
-      // Batch delete all S3 files for efficiency
-      if (s3Keys.length > 0) {
-        try {
-          await ctx.scheduler.runAfter(
-            0,
-            internal.s3Cleanup.deleteS3ObjectsBatchAction,
-            { s3Keys },
-          );
-          console.log(
-            `Scheduled deletion of ${s3Keys.length} S3 objects for user ${user.subject}`,
-          );
-        } catch (error) {
-          console.error("Failed to schedule S3 batch deletion:", error);
-          // Don't fail user deletion on S3 cleanup errors
         }
       }
 
-      // Step 5: Delete memories (independent of other data)
-      await Promise.all(
-        memories.map(async (memory) => {
-          try {
-            await ctx.db.delete(memory._id);
-          } catch (error) {
-            console.error(`Failed to delete memory ${memory._id}:`, error);
-          }
-        }),
-      );
+      // Step 3: Delete user customization settings
+      const customization = await ctx.db
+        .query("user_customization")
+        .withIndex("by_user_id", (q) => q.eq("user_id", args.userId))
+        .unique();
 
-      // Step 6: Delete notes (independent of other data)
-      await Promise.all(
-        notes.map(async (note) => {
-          try {
-            await ctx.db.delete(note._id);
-          } catch (error) {
-            console.error(`Failed to delete note ${note._id}:`, error);
-          }
-        }),
-      );
-
-      // Step 7: Delete user customization (independent of other data)
       if (customization) {
-        try {
-          await ctx.db.delete(customization._id);
-        } catch (error) {
-          console.error(
-            `Failed to delete user customization ${customization._id}:`,
-            error,
-          );
-        }
+        await ctx.db.delete(customization._id);
       }
+
+      // Step 4: Delete referral codes (codes owned BY this user)
+      const referralCodes = await ctx.db
+        .query("referral_codes")
+        .withIndex("by_user_id", (q) => q.eq("user_id", args.userId))
+        .collect();
+
+      for (const code of referralCodes) {
+        await ctx.db.delete(code._id);
+      }
+
+      // Step 5: Delete referral attributions (referrals made BY this user)
+      const outgoingReferrals = await ctx.db
+        .query("referral_attributions")
+        .withIndex("by_referrer_user_id", (q) =>
+          q.eq("referrer_user_id", args.userId),
+        )
+        .collect();
+
+      for (const referral of outgoingReferrals) {
+        await ctx.db.delete(referral._id);
+      }
+
+      // Step 6: Delete referral attribution (if this user WAS referred)
+      const incomingReferral = await ctx.db
+        .query("referral_attributions")
+        .withIndex("by_referred_user_id", (q) =>
+          q.eq("referred_user_id", args.userId),
+        )
+        .unique();
+
+      if (incomingReferral) {
+        await ctx.db.delete(incomingReferral._id);
+      }
+
+      // Step 7: Delete usage logs
+      const usageLogs = await ctx.db
+        .query("usage_logs")
+        .withIndex("by_user", (q) => q.eq("user_id", args.userId))
+        .collect();
+
+      for (const log of usageLogs) {
+        await ctx.db.delete(log._id);
+      }
+
+      // Step 8: Delete extra usage records
+      const extraUsages = await ctx.db
+        .query("extra_usage")
+        .withIndex("by_user_id", (q) => q.eq("user_id", args.userId))
+        .collect();
+
+      for (const extra of extraUsages) {
+        await ctx.db.delete(extra._id);
+      }
+
+      convexLogger.info("user_deletion_completed", {
+        userId: args.userId,
+        durationMs: Date.now() - startTime,
+        orphanedFilesDeleted: orphanedFiles.length,
+      });
 
       return null;
     } catch (error) {
-      console.error("Failed to delete user data:", error);
-      throw new Error(
-        "Account deletion failed. Please try again or contact support.",
-      );
+      convexLogger.error("user_deletion_failed", {
+        userId: args.userId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      throw new ConvexError({
+        code: "USER_DELETION_FAILED",
+        message: "Failed to delete all user data",
+      });
     }
   },
 });

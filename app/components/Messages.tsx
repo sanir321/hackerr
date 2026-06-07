@@ -17,7 +17,7 @@ import { useFileUrlCache } from "../hooks/useFileUrlCache";
 import { FileUrlCacheProvider } from "../contexts/FileUrlCacheContext";
 import { findLastAssistantMessageIndex } from "@/lib/utils/message-utils";
 import type { ChatStatus, ChatMessage } from "@/types";
-import type { FileDetails } from "@/types/file";
+import type { FileDetails, FilePart } from "@/types/file";
 import { toast } from "sonner";
 import { WandSparkles } from "lucide-react";
 import DotsSpinner from "@/components/ui/dots-spinner";
@@ -166,9 +166,9 @@ export const Messages = ({
   const [showAllFilesDialog, setShowAllFilesDialog] = useState(false);
   const [dialogFiles, setDialogFiles] = useState<
     Array<{
-      part: any;
+      part: FilePart;
+      messageIndex: number;
       partIndex: number;
-      messageId: string;
     }>
   >([]);
 
@@ -222,19 +222,19 @@ export const Messages = ({
       if (!fileDetails || fileDetails.length === 0) return;
 
       const files = fileDetails
-        .filter((file) => file.url || file.storageId || file.s3Key)
+        .filter((file) => !!(file.url || file.storageId || file.fileId))
         .map((file, fileIndex) => ({
           part: {
             url: file.url ?? undefined,
             storageId: file.storageId,
             fileId: file.fileId,
-            s3Key: file.s3Key,
             name: file.name,
             filename: file.name,
             mediaType: file.mediaType,
+            size: file.size ?? 0,
           },
+          messageIndex: -1, // Not used inside the dialog currently for logic
           partIndex: fileIndex,
-          messageId: message.id,
         }));
 
       setDialogFiles(files);
@@ -381,7 +381,7 @@ export const Messages = ({
           open={showAllFilesDialog}
           onOpenChange={setShowAllFilesDialog}
           files={dialogFiles}
-          chatTitle={chatTitle}
+          chatTitle={chatTitle || "Chat"}
         />
       </div>
     </FileUrlCacheProvider>

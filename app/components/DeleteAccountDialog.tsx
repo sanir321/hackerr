@@ -28,7 +28,7 @@ export const DeleteAccountDialog = ({
   onOpenChange,
 }: DeleteAccountDialogProps) => {
   const { user } = useAuth();
-  const deleteAllUserData = useMutation(api.userDeletion.deleteAllUserData);
+  const deleteMyUserData = useMutation(api.userDeletion.deleteMyUserData);
   const [isDeleting, setIsDeleting] = useState(false);
   const [emailInput, setEmailInput] = useState("");
   const [confirmInput, setConfirmInput] = useState("");
@@ -80,7 +80,7 @@ export const DeleteAccountDialog = ({
     setIsDeleting(true);
     try {
       // 1) Delete all Convex data first
-      await deleteAllUserData({});
+      await deleteMyUserData({});
       // 2) Remove WorkOS org(s), and delete WorkOS user server-side
       const res = await fetch("/api/delete-account", { method: "POST" });
       if (!res.ok) {

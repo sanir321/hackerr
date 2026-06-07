@@ -8,6 +8,9 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import MainSidebar from "./Sidebar";
 import { SettingsDialog } from "./SettingsDialog";
 import { onOpenSettingsDialog } from "@/lib/utils/settings-dialog";
+import PricingDialog from "./PricingDialog";
+import TeamPricingDialog from "./TeamPricingDialog";
+import { usePricingDialog } from "../hooks/usePricingDialog";
 
 /**
  * Shared layout for chat routes: Chat Sidebar (left) + main content slot.
@@ -16,11 +19,19 @@ import { onOpenSettingsDialog } from "@/lib/utils/settings-dialog";
  */
 export function ChatLayout({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
-  const { chatSidebarOpen, setChatSidebarOpen } = useGlobalState();
+  const {
+    chatSidebarOpen,
+    setChatSidebarOpen,
+    subscription,
+    teamPricingDialogOpen,
+    setTeamPricingDialogOpen,
+  } = useGlobalState();
   const panelRef = useRef<HTMLDivElement>(null);
   // Keep chat list subscription in layout so it doesn't refetch when sidebar opens/closes
   const chatListData = useChats();
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
+
+  const { showPricing, handleClosePricing } = usePricingDialog(subscription);
 
   // Settings dialog — local state, opened via custom event from anywhere
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
@@ -167,6 +178,11 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
         open={settingsDialogOpen}
         onOpenChange={setSettingsDialogOpen}
         initialTab={settingsDialogTab}
+      />
+      <PricingDialog isOpen={showPricing} onClose={handleClosePricing} />
+      <TeamPricingDialog
+        isOpen={teamPricingDialogOpen}
+        onClose={() => setTeamPricingDialogOpen(false)}
       />
     </div>
   );

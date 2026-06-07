@@ -393,7 +393,6 @@ function renderFileTool(
       filename?: string;
       mediaType?: string;
       storageId?: string;
-      s3Key?: string;
       page?: number;
     }>;
     renderedPages?: number[];

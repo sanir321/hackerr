@@ -10,7 +10,6 @@ import {
   validateImageFile,
   createFileMessagePartFromUploadedFile,
   isImageFile,
-  RateLimitInfo,
 } from "@/lib/utils/file-utils";
 import { getMaxFileTokens } from "@/lib/token-utils";
 import {
@@ -63,12 +62,12 @@ export const useFileUpload = (mode: ChatMode = "ask") => {
 
   const deleteFile = useMutation(api.fileStorage.deleteFile);
   const saveFile = useAction(api.fileActions.saveFile);
-  const generateS3UploadUrlAction = useAction(
-    api.s3Actions.generateS3UploadUrlAction,
+  const generateUploadUrlAction = useAction(
+    api.fileActions.generateUploadUrl,
   );
 
   // Helper to show rate limit warning (throttled to once per minute)
-  const showRateLimitWarning = useCallback((rateLimit: RateLimitInfo) => {
+  const showRateLimitWarning = useCallback((rateLimit: { remaining: number; reset: number }) => {
     if (rateLimit.remaining > RATE_LIMIT_WARNING_THRESHOLD) {
       return;
     }
@@ -195,31 +194,20 @@ export const useFileUpload = (mode: ChatMode = "ask") => {
     [maxFilesLimit],
   );
 
-  // Upload file to S3 storage
-  const uploadFileToS3 = useCallback(
+  // Upload file to Convex storage
+  const uploadFileToConvex = useCallback(
     async (
       file: File,
       uploadIndex: number,
     ) => {
       try {
-        // Step 1: Generate presigned S3 upload URL
-        const { uploadUrl, s3Key, rateLimit } = await generateS3UploadUrlAction(
-          {
-            fileName: file.name,
-            contentType: file.type || "application/octet-stream",
-            size: file.size,
-            mode,
-          },
-        );
+        // Step 1: Generate Convex upload URL
+        // In the client hook, we don't pass serviceKey or userId (handled by auth)
+        const uploadUrl = await generateUploadUrlAction({});
 
-        // Show warning if approaching rate limit
-        if (rateLimit) {
-          showRateLimitWarning(rateLimit);
-        }
-
-        // Step 2: Upload file to S3 using presigned URL
+        // Step 2: Upload file to Convex using the URL
         const uploadResponse = await fetch(uploadUrl, {
-          method: "PUT",
+          method: "POST",
           body: file,
           headers: { "Content-Type": file.type || "application/octet-stream" },
         });
@@ -230,9 +218,11 @@ export const useFileUpload = (mode: ChatMode = "ask") => {
           );
         }
 
-        // Step 3: Save file metadata to database with S3 key
+        const { storageId } = await uploadResponse.json();
+
+        // Step 3: Save file metadata to database
         const { url, fileId, tokens } = await saveFile({
-          s3Key,
+          storageId: storageId as Id<"_storage">,
           name: file.name,
           mediaType: file.type,
           size: file.size,
@@ -294,13 +284,12 @@ export const useFileUpload = (mode: ChatMode = "ask") => {
       }
     },
     [
-      generateS3UploadUrlAction,
+      generateUploadUrlAction,
       saveFile,
       getTotalTokens,
       deleteFile,
       removeUploadedFile,
       updateUploadedFile,
-      showRateLimitWarning,
       mode,
       subscription,
     ],
@@ -320,10 +309,10 @@ export const useFileUpload = (mode: ChatMode = "ask") => {
         });
 
         // Start upload in background with correct index
-        uploadFileToS3(file, startingIndex + index);
+        uploadFileToConvex(file, startingIndex + index);
       });
     },
-    [uploadedFiles.length, addUploadedFile, uploadFileToS3],
+    [uploadedFiles.length, addUploadedFile, uploadFileToConvex],
   );
 
   // Unified file processing function

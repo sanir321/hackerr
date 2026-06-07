@@ -1,4 +1,5 @@
 import {
+  action,
   internalMutation,
   internalQuery,
   mutation,
@@ -7,8 +8,7 @@ import {
 import { Id } from "./_generated/dataModel";
 import { v, ConvexError } from "convex/values";
 import { validateServiceKey } from "./lib/utils";
-import { internal } from "./_generated/api";
-import { isSupportedImageMediaType } from "../lib/utils/file-utils";
+import { isSupportedImageMediaType } from "../lib/utils/upload-policy";
 import { fileCountAggregate } from "./fileAggregate";
 import { convexLogger } from "./lib/logger";
 
@@ -66,8 +66,80 @@ export const getFileDownloadUrl = query({
 });
 
 /**
+ * Public query to get a file metadata by ID
+ */
+export const getFileMetadata = query({
+  args: {
+    fileId: v.id("files"),
+  },
+  returns: v.union(
+    v.object({
+      _id: v.id("files"),
+      storage_id: v.id("_storage"),
+      user_id: v.string(),
+      name: v.string(),
+      media_type: v.string(),
+      size: v.number(),
+      file_token_size: v.number(),
+      content: v.optional(v.string()),
+      is_attached: v.boolean(),
+      _creationTime: v.number(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity();
+    if (!user) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Unauthorized: User not authenticated",
+      });
+    }
+
+    const file = await ctx.db.get(args.fileId);
+    if (!file || file.user_id !== user.subject) {
+      return null;
+    }
+    return file;
+  },
+});
+
+/**
+ * Get download URLs for multiple files by storageIds in a single call (batch)
+ */
+export const getFileUrlsBatchAction = action({
+  args: {
+    storageIds: v.array(v.string()),
+  },
+  returns: v.array(v.union(v.string(), v.null())),
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity();
+    if (!user) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Unauthorized: User not authenticated",
+      });
+    }
+
+    // Resolve URLs in parallel.
+    // For each storageId, getUrl() generates a signed URL.
+    const urls = await Promise.all(
+      args.storageIds.map(async (storageId) => {
+        try {
+          return await ctx.storage.getUrl(storageId);
+        } catch (error) {
+          console.error(`Failed to get URL for storageId ${storageId}:`, error);
+          return null;
+        }
+      }),
+    );
+
+    return urls;
+  },
+});
+
+/**
  * Delete file from storage by file ID
- * Handles both S3 and Convex storage files
  */
 export const deleteFile = mutation({
   args: {
@@ -101,19 +173,9 @@ export const deleteFile = mutation({
       });
     }
 
-    // Delete from appropriate storage
-    if (file.s3_key) {
-      // Schedule S3 deletion using the cleanup action
-      await ctx.scheduler.runAfter(0, internal.s3Cleanup.deleteS3ObjectAction, {
-        s3Key: file.s3_key,
-      });
-    } else if (file.storage_id) {
-      // Delete from Convex storage
+    // Delete from Convex storage
+    if (file.storage_id) {
       await ctx.storage.delete(file.storage_id);
-    } else {
-      console.warn(
-        `File ${args.fileId} has neither s3_key nor storage_id, skipping storage deletion`,
-      );
     }
 
     await fileCountAggregate.deleteIfExists(ctx, file);
@@ -165,8 +227,7 @@ export const getFileMetadataByFileIds = query({
         fileId: v.id("files"),
         name: v.string(),
         mediaType: v.string(),
-        storageId: v.optional(v.id("_storage")),
-        s3Key: v.optional(v.string()),
+        storageId: v.id("_storage"),
       }),
       v.null(),
     ),
@@ -191,7 +252,6 @@ export const getFileMetadataByFileIds = query({
         name: file.name,
         mediaType: file.media_type,
         storageId: file.storage_id,
-        s3Key: file.s3_key,
       };
     });
   },
@@ -238,7 +298,6 @@ export const getFileContentByFileIds = query({
       }
 
       // Only return content for non-image, non-PDF files
-      // Note: Supported image formats don't have content, unsupported images may have extracted content
       const isSupportedImage = isSupportedImageMediaType(file.media_type);
       const isPdf = file.media_type === "application/pdf";
 
@@ -255,7 +314,6 @@ export const getFileContentByFileIds = query({
 
 /**
  * Internal mutation: purge unattached files older than cutoff
- * Handles both S3 and Convex storage files
  */
 export const purgeExpiredUnattachedFiles = internalMutation({
   args: {
@@ -277,21 +335,9 @@ export const purgeExpiredUnattachedFiles = internalMutation({
     let deletedCount = 0;
     for (const file of candidates) {
       try {
-        // Delete from appropriate storage
-        if (file.s3_key) {
-          // Schedule S3 deletion using the cleanup action
-          await ctx.scheduler.runAfter(
-            0,
-            internal.s3Cleanup.deleteS3ObjectAction,
-            { s3Key: file.s3_key },
-          );
-        } else if (file.storage_id) {
-          // Delete from Convex storage
+        // Delete from Convex storage
+        if (file.storage_id) {
           await ctx.storage.delete(file.storage_id);
-        } else {
-          console.warn(
-            `File ${file._id} has neither s3_key nor storage_id, skipping storage deletion`,
-          );
         }
       } catch (e) {
         console.error(`Failed to delete storage for file ${file._id}:`, e);
@@ -310,7 +356,6 @@ export const purgeExpiredUnattachedFiles = internalMutation({
 
 /**
  * Internal query to get a file by ID
- * Used by actions that need to verify file existence and ownership
  */
 export const getFileById = internalQuery({
   args: {
@@ -319,8 +364,7 @@ export const getFileById = internalQuery({
   returns: v.union(
     v.object({
       _id: v.id("files"),
-      storage_id: v.optional(v.id("_storage")),
-      s3_key: v.optional(v.string()),
+      storage_id: v.id("_storage"),
       user_id: v.string(),
       name: v.string(),
       media_type: v.string(),
@@ -338,93 +382,12 @@ export const getFileById = internalQuery({
   },
 });
 
-export const getFileByS3Key = internalQuery({
-  args: {
-    s3Key: v.string(),
-  },
-  returns: v.union(
-    v.object({
-      _id: v.id("files"),
-      storage_id: v.optional(v.id("_storage")),
-      s3_key: v.optional(v.string()),
-      user_id: v.string(),
-      name: v.string(),
-      media_type: v.string(),
-      size: v.number(),
-      file_token_size: v.number(),
-      content: v.optional(v.string()),
-      is_attached: v.boolean(),
-      _creationTime: v.number(),
-    }),
-    v.null(),
-  ),
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("files")
-      .withIndex("by_s3_key", (q) => q.eq("s3_key", args.s3Key))
-      .unique();
-  },
-});
-
-export const createPendingS3File = internalMutation({
-  args: {
-    s3Key: v.string(),
-    userId: v.string(),
-    name: v.string(),
-    mediaType: v.string(),
-    size: v.number(),
-  },
-  returns: v.id("files"),
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("files")
-      .withIndex("by_s3_key", (q) => q.eq("s3_key", args.s3Key))
-      .unique();
-    if (existing) {
-      throw new ConvexError({
-        code: "DUPLICATE_S3_KEY",
-        message: "An upload reservation already exists for this S3 key",
-      });
-    }
-
-    const currentStorageBytes = await fileCountAggregate.sum(ctx, {
-      namespace: args.userId,
-    });
-    if (currentStorageBytes + args.size > MAX_STORAGE_BYTES) {
-      const usedGB = (currentStorageBytes / (1024 * 1024 * 1024)).toFixed(2);
-      throw new ConvexError({
-        code: "STORAGE_LIMIT_EXCEEDED",
-        message: `Storage limit exceeded. You are using ${usedGB} GB of 10 GB.`,
-      });
-    }
-
-    const fileId = await ctx.db.insert("files", {
-      s3_key: args.s3Key,
-      user_id: args.userId,
-      name: args.name,
-      media_type: args.mediaType,
-      size: args.size,
-      file_token_size: 0,
-      is_attached: false,
-    });
-
-    const doc = await ctx.db.get(fileId);
-    if (doc) {
-      await fileCountAggregate.insertIfDoesNotExist(ctx, doc);
-    }
-
-    return fileId;
-  },
-});
-
 /**
  * Internal mutation to save file metadata to database
- * This is separated from the action to handle database operations
  */
 export const saveFileToDb = internalMutation({
   args: {
-    storageId: v.optional(v.id("_storage")),
-    s3Key: v.optional(v.string()),
+    storageId: v.id("_storage"),
     userId: v.string(),
     name: v.string(),
     mediaType: v.string(),
@@ -435,43 +398,6 @@ export const saveFileToDb = internalMutation({
   },
   returns: v.id("files"),
   handler: async (ctx, args) => {
-    if (args.s3Key) {
-      const existing = await ctx.db
-        .query("files")
-        .withIndex("by_s3_key", (q) => q.eq("s3_key", args.s3Key))
-        .unique();
-      if (existing) {
-        if (existing.user_id !== args.userId) {
-          throw new ConvexError({
-            code: "UNAUTHORIZED",
-            message: "Upload reservation does not belong to this user.",
-          });
-        }
-        if (existing.size !== args.size) {
-          throw new ConvexError({
-            code: "FILE_SIZE_MISMATCH",
-            message: "Uploaded file size does not match reserved size.",
-          });
-        }
-
-        await ctx.db.patch(existing._id, {
-          storage_id: args.storageId,
-          name: args.name,
-          media_type: args.mediaType,
-          file_token_size: args.fileTokenSize,
-          content: args.content,
-          is_attached: false,
-        });
-        return existing._id;
-      }
-      if (!args.trustedServiceGenerated) {
-        throw new ConvexError({
-          code: "MISSING_UPLOAD_RESERVATION",
-          message: "S3 uploads must have an existing upload reservation.",
-        });
-      }
-    }
-
     // Check storage limit
     const currentStorageBytes = await fileCountAggregate.sum(ctx, {
       namespace: args.userId,
@@ -486,7 +412,6 @@ export const saveFileToDb = internalMutation({
 
     const fileId = await ctx.db.insert("files", {
       storage_id: args.storageId,
-      s3_key: args.s3Key,
       user_id: args.userId,
       name: args.name,
       media_type: args.mediaType,

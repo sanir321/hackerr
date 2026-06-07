@@ -88,7 +88,6 @@ Usage:
                 fileId: saved.fileId,
                 name: saved.name,
                 mediaType: saved.mediaType,
-                s3Key: saved.s3Key,
                 storageId: saved.storageId,
               });
 
@@ -104,7 +103,6 @@ Usage:
                         fileId: saved.fileId,
                         name: saved.name,
                         mediaType: saved.mediaType,
-                        s3Key: saved.s3Key,
                         storageId: saved.storageId,
                       },
                     ],

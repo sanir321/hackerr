@@ -10,13 +10,15 @@ import { convexLogger } from "./lib/logger";
 
 const POINTS_PER_DOLLAR = 10_000;
 
-const paidTierValidator = v.union(
+const subscriptionTierValidator = v.union(
+  v.literal("free"),
   v.literal("pro"),
   v.literal("pro-plus"),
   v.literal("ultra"),
   v.literal("team"),
 );
 
+type SubscriptionTier = "free" | "pro" | "pro-plus" | "ultra" | "team";
 type PaidTier = "pro" | "pro-plus" | "ultra" | "team";
 type RewardType = "referred_signup" | "referrer_conversion";
 
@@ -168,7 +170,7 @@ async function grantReward(
     referrerUserId?: string;
     referredUserId?: string;
     referralCode?: string;
-    subscriptionTier?: PaidTier;
+    subscriptionTier?: SubscriptionTier;
     organizationId?: string;
   },
 ) {
@@ -221,7 +223,7 @@ export const getOrCreateReferralCode = mutation({
   args: {
     serviceKey: v.string(),
     userId: v.string(),
-    subscriptionTier: paidTierValidator,
+    subscriptionTier: subscriptionTierValidator,
     organizationId: v.optional(v.string()),
     codeCandidate: v.string(),
   },
@@ -393,7 +395,7 @@ export const setReferralCodesPaidEligibility = mutation({
     serviceKey: v.string(),
     userIds: v.array(v.string()),
     active: v.boolean(),
-    subscriptionTier: v.optional(paidTierValidator),
+    subscriptionTier: v.optional(subscriptionTierValidator),
     organizationId: v.optional(v.string()),
   },
   returns: v.object({
@@ -731,7 +733,7 @@ export const awardConversionReward = mutation({
     referrerRewardDollars: v.number(),
     referredUserId: v.optional(v.string()),
     plan: v.optional(v.string()),
-    tier: v.optional(paidTierValidator),
+    tier: v.optional(subscriptionTierValidator),
   },
   returns: v.object({
     status: v.union(
@@ -787,7 +789,7 @@ export const awardConversionReward = mutation({
       };
     }
 
-    if (!args.tier || !QUALIFYING_TIERS.has(args.tier)) {
+    if (!args.tier || !QUALIFYING_TIERS.has(args.tier as PaidTier)) {
       await ctx.db.patch(attribution._id, {
         conversion_reward_status: "withheld",
         withheld_reason: "non_qualifying_plan",
@@ -850,7 +852,7 @@ export const awardConversionReward = mutation({
       referrerUserId: attribution.referrer_user_id,
       referredUserId: attribution.referred_user_id,
       referralCode: attribution.referral_code,
-      subscriptionTier: attribution.referrer_subscription_tier,
+      subscriptionTier: attribution.referrer_subscription_tier as SubscriptionTier,
       organizationId: attribution.referrer_organization_id,
     });
 

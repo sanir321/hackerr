@@ -30,9 +30,8 @@ export interface FilePart {
   name?: string;
   filename?: string;
   mediaType?: string;
-  storage?: "s3";
+  size?: number;
   storageId?: string; // Storage ID for on-demand URL fetching (Convex files)
-  s3Key?: string; // S3 key for on-demand URL fetching (S3 files)
 }
 
 // Props for FilePartRenderer component
@@ -88,9 +87,9 @@ export interface FileDetails {
   fileId: Id<"files">;
   name: string;
   mediaType?: string;
+  size?: number;
   url?: string | null;
   storageId?: string;
-  s3Key?: string;
 }
 
 /**

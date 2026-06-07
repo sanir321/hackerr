@@ -32,7 +32,7 @@ jest.mock("convex/values", () => ({
 jest.mock("../lib/utils", () => ({
   validateServiceKey: jest.fn(),
 }));
-jest.mock("../../lib/utils/file-utils", () => ({
+jest.mock("../../lib/utils/upload-policy", () => ({
   isSupportedImageMediaType: jest.fn(),
 }));
 jest.mock("../_generated/api", () => ({
@@ -42,11 +42,6 @@ jest.mock("../_generated/api", () => ({
         "internal.fileStorage.purgeExpiredUnattachedFiles",
       getFileById: "internal.fileStorage.getFileById",
       saveFileToDb: "internal.fileStorage.saveFileToDb",
-    },
-    s3Cleanup: {
-      deleteS3ObjectAction: "internal.s3Cleanup.deleteS3ObjectAction",
-      deleteS3ObjectsBatchAction:
-        "internal.s3Cleanup.deleteS3ObjectsBatchAction",
     },
   },
 }));
@@ -83,6 +78,7 @@ describe("fileStorage - deleteFile", () => {
       size: 1024,
       file_token_size: 100,
       is_attached: false,
+      storage_id: "storage-id-123" as Id<"_storage">,
       _creationTime: Date.now(),
     };
 
@@ -145,74 +141,14 @@ describe("fileStorage - deleteFile", () => {
     });
   });
 
-  describe("S3 File Deletion", () => {
-    it("should schedule S3 deletion for S3 files", async () => {
-      mockFile.s3_key = "users/test-user-123/test-file.pdf";
-      mockFile.storage_id = undefined;
-      mockCtx.db.get.mockResolvedValue(mockFile);
-
-      const { deleteFile } = await import("../fileStorage");
-
-      await deleteFile.handler(mockCtx, { fileId: testFileId });
-
-      // Verify S3 deletion was scheduled
-      expect(mockCtx.scheduler.runAfter).toHaveBeenCalledWith(
-        0,
-        "internal.s3Cleanup.deleteS3ObjectAction",
-        { s3Key: mockFile.s3_key },
-      );
-
-      // Verify Convex storage delete was not called
-      expect(mockCtx.storage.delete).not.toHaveBeenCalled();
-
-      // Verify aggregate was updated
-      expect(mockFileCountAggregate.deleteIfExists).toHaveBeenCalledWith(
-        mockCtx,
-        mockFile,
-      );
-
-      // Verify database record was deleted
-      expect(mockCtx.db.delete).toHaveBeenCalledWith(testFileId);
-    });
-
-    it("should delete DB record even if S3 scheduling fails", async () => {
-      mockFile.s3_key = "users/test-user-123/test-file.pdf";
-      mockFile.storage_id = undefined;
-      mockCtx.db.get.mockResolvedValue(mockFile);
-      mockCtx.scheduler.runAfter.mockRejectedValue(
-        new Error("Scheduler error"),
-      );
-
-      const { deleteFile } = await import("../fileStorage");
-
-      await expect(
-        deleteFile.handler(mockCtx, { fileId: testFileId }),
-      ).rejects.toThrow("Scheduler error");
-
-      // DB delete should not be called if scheduler fails
-      expect(mockCtx.db.delete).not.toHaveBeenCalled();
-    });
-  });
-
   describe("Convex Storage File Deletion", () => {
     it("should delete Convex storage for Convex files", async () => {
-      mockFile.storage_id = "storage-id-123" as Id<"_storage">;
-      mockFile.s3_key = undefined;
-      mockCtx.db.get.mockResolvedValue(mockFile);
-
       const { deleteFile } = await import("../fileStorage");
 
       await deleteFile.handler(mockCtx, { fileId: testFileId });
 
       // Verify Convex storage delete was called
       expect(mockCtx.storage.delete).toHaveBeenCalledWith(mockFile.storage_id);
-
-      // Verify S3 deletion was not scheduled (scheduler might be called for aggregate but not S3)
-      expect(mockCtx.scheduler.runAfter).not.toHaveBeenCalledWith(
-        expect.anything(),
-        "internal.s3Cleanup.deleteS3ObjectAction",
-        expect.anything(),
-      );
 
       // Verify aggregate was updated
       expect(mockFileCountAggregate.deleteIfExists).toHaveBeenCalledWith(
@@ -225,9 +161,6 @@ describe("fileStorage - deleteFile", () => {
     });
 
     it("should delete DB record even if Convex storage deletion fails", async () => {
-      mockFile.storage_id = "storage-id-123" as Id<"_storage">;
-      mockFile.s3_key = undefined;
-      mockCtx.db.get.mockResolvedValue(mockFile);
       mockCtx.storage.delete.mockRejectedValue(
         new Error("Storage delete failed"),
       );
@@ -244,43 +177,7 @@ describe("fileStorage - deleteFile", () => {
   });
 
   describe("Edge Cases", () => {
-    it("should warn and still delete DB record if file has neither s3_key nor storage_id", async () => {
-      mockFile.s3_key = undefined;
-      mockFile.storage_id = undefined;
-      mockCtx.db.get.mockResolvedValue(mockFile);
-
-      const { deleteFile } = await import("../fileStorage");
-
-      await deleteFile.handler(mockCtx, { fileId: testFileId });
-
-      // Should warn about missing storage reference
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining("has neither s3_key nor storage_id"),
-      );
-
-      // Should not attempt storage deletion
-      expect(mockCtx.storage.delete).not.toHaveBeenCalled();
-      // S3 cleanup should not be scheduled (aggregate delete attempts are okay)
-      expect(mockCtx.scheduler.runAfter).not.toHaveBeenCalledWith(
-        expect.anything(),
-        "internal.s3Cleanup.deleteS3ObjectAction",
-        expect.anything(),
-      );
-
-      // Verify aggregate was still updated
-      expect(mockFileCountAggregate.deleteIfExists).toHaveBeenCalledWith(
-        mockCtx,
-        mockFile,
-      );
-
-      // Should still delete database record
-      expect(mockCtx.db.delete).toHaveBeenCalledWith(testFileId);
-    });
-
     it("should return null on successful deletion", async () => {
-      mockFile.storage_id = "storage-id-123" as Id<"_storage">;
-      mockCtx.db.get.mockResolvedValue(mockFile);
-
       const { deleteFile } = await import("../fileStorage");
 
       const result = await deleteFile.handler(mockCtx, { fileId: testFileId });

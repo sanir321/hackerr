@@ -29,8 +29,7 @@ type ViewPreviewFile = {
   fileId: Id<"files">;
   name: string;
   mediaType: string;
-  s3Key?: string;
-  storageId?: Id<"_storage">;
+  storageId: Id<"_storage">;
 };
 
 type ViewMetadata = {
@@ -345,7 +344,6 @@ async function uploadViewPreviewFiles(args: {
       fileId: uploaded.fileId,
       name: uploaded.name,
       mediaType: uploaded.mediaType,
-      s3Key: uploaded.s3Key,
       storageId: uploaded.storageId,
     },
   ];

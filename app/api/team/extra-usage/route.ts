@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { workos } from "../../workos";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/db/convex-client";
 import { api } from "@/convex/_generated/api";
 import { requireAdminOrg } from "../team-auth";
-
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 /**
  * GET /api/team/extra-usage
@@ -13,6 +11,7 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
  */
 export const GET = async (req: NextRequest) => {
   try {
+    const convex = getConvexClient();
     const guard = await requireAdminOrg(req);
     if (!guard.ok) return guard.response;
 
@@ -77,6 +76,7 @@ export const GET = async (req: NextRequest) => {
  */
 export const POST = async (req: NextRequest) => {
   try {
+    const convex = getConvexClient();
     const guard = await requireAdminOrg(req);
     if (!guard.ok) return guard.response;
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/db/convex-client";
 import { api } from "@/convex/_generated/api";
 import { workos } from "@/app/api/workos";
 import { getUserIDAndPro } from "@/lib/auth/get-user-id";
@@ -10,8 +10,6 @@ import {
   isValidReferralCode,
 } from "@/lib/referrals/config";
 import { grantFreeReferralBonusUnits } from "@/lib/rate-limit/sliding-window";
-
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export const runtime = "nodejs";
 
@@ -27,6 +25,7 @@ function parseCreatedAtMs(raw: unknown): number | undefined {
 }
 
 export async function POST(req: NextRequest) {
+  const convex = getConvexClient();
   const config = getReferralRewardConfig();
   const referralCode = req.cookies.get(REFERRAL_COOKIE_NAME)?.value;
 

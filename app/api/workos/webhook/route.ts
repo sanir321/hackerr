@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/db/convex-client";
 import type { Event } from "@workos-inc/node";
 import { api } from "@/convex/_generated/api";
 import { workos } from "@/app/api/workos";
 import { captureUserSignedUp } from "@/lib/analytics/user-signup";
-
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export const runtime = "nodejs";
 
@@ -18,6 +16,7 @@ export const runtime = "nodejs";
  * - Events: user.created
  */
 export async function POST(req: NextRequest) {
+  const convex = getConvexClient();
   const signature = req.headers.get("workos-signature");
 
   if (!signature) {

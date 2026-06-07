@@ -100,10 +100,7 @@ export default defineSchema({
     }),
 
   files: defineTable({
-    // Legacy field for Convex storage (existing files)
-    storage_id: v.optional(v.id("_storage")),
-    // New field for S3 storage
-    s3_key: v.optional(v.string()),
+    storage_id: v.id("_storage"),
     user_id: v.string(),
     name: v.string(),
     media_type: v.string(),
@@ -114,7 +111,6 @@ export default defineSchema({
   })
     .index("by_user_id", ["user_id"])
     .index("by_is_attached", ["is_attached"])
-    .index("by_s3_key", ["s3_key"])
     .index("by_storage_id", ["storage_id"]),
 
   feedback: defineTable({
@@ -209,6 +205,7 @@ export default defineSchema({
     status: v.union(v.literal("active"), v.literal("deactivated")),
     referrer_subscription_tier: v.optional(
       v.union(
+        v.literal("free"),
         v.literal("pro"),
         v.literal("pro-plus"),
         v.literal("ultra"),
@@ -230,6 +227,7 @@ export default defineSchema({
     referral_code: v.string(),
     referrer_subscription_tier: v.optional(
       v.union(
+        v.literal("free"),
         v.literal("pro"),
         v.literal("pro-plus"),
         v.literal("ultra"),
@@ -253,6 +251,7 @@ export default defineSchema({
     requested_plan: v.optional(v.string()),
     converted_tier: v.optional(
       v.union(
+        v.literal("free"),
         v.literal("pro"),
         v.literal("pro-plus"),
         v.literal("ultra"),

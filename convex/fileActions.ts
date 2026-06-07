@@ -21,7 +21,6 @@ import mammoth from "mammoth";
 import WordExtractor from "word-extractor";
 import { isBinaryFile } from "isbinaryfile";
 import { internal } from "./_generated/api";
-import { generateS3DownloadUrl, getS3ObjectSizeBytes } from "./s3Utils";
 import { convexLogger } from "./lib/logger";
 import type {
   FileItemChunk,
@@ -36,10 +35,7 @@ import {
   validateUploadPolicy,
 } from "../lib/utils/upload-policy";
 import { FILE_TOKEN_PERCENT, MAX_TOKENS_PAID } from "../lib/token-utils";
-import {
-  MAX_GENERATED_FILE_SIZE_BYTES,
-  S3_USER_FILES_PREFIX,
-} from "../lib/constants/s3";
+import { MAX_GENERATED_FILE_SIZE_BYTES } from "../lib/constants/s3";
 import {
   hasPaidEntitlement,
   parseEntitlements,
@@ -54,9 +50,6 @@ type FileUploadRateLimitConfig = {
   limit: number;
   window: typeof FILE_UPLOAD_WINDOW;
 };
-
-const isUserScopedS3Key = (s3Key: string, userId: string) =>
-  s3Key.startsWith(`${S3_USER_FILES_PREFIX}/${userId}/`);
 
 const FILE_UPLOAD_RATE_LIMITS: Record<
   FileUploadRateLimitTier,
@@ -644,13 +637,53 @@ const processDocxFile = async (
 };
 
 /**
+ * Generate a Convex upload URL.
+ */
+export const generateUploadUrl = action({
+  args: {
+    serviceKey: v.optional(v.string()),
+    userId: v.optional(v.string()),
+  },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    let actingUserId: string;
+    let entitlements: Array<string> = [];
+
+    if (args.serviceKey) {
+      validateServiceKey(args.serviceKey);
+      if (!args.userId) {
+        throw new ConvexError({
+          code: "MISSING_USER_ID",
+          message: "userId is required when using serviceKey",
+        });
+      }
+      actingUserId = args.userId;
+      entitlements = ["ultra-plan"];
+    } else {
+      const user = await ctx.auth.getUserIdentity();
+      if (!user) {
+        throw new ConvexError({
+          code: "UNAUTHORIZED",
+          message: "Unauthorized: User not authenticated",
+        });
+      }
+      actingUserId = user.subject;
+      entitlements = (user.entitlements ?? []) as string[];
+    }
+
+    await checkFileUploadRateLimit(actingUserId, true, { entitlements });
+
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/**
  * Save file metadata to database after processing the file content
  * This is an action because it uses Node.js APIs like Buffer
  */
 export const saveFile = action({
   args: {
-    storageId: v.optional(v.id("_storage")),
-    s3Key: v.optional(v.string()),
+    storageId: v.id("_storage"),
     name: v.string(),
     mediaType: v.string(),
     size: v.number(),
@@ -667,19 +700,6 @@ export const saveFile = action({
     tokens: v.number(),
   }),
   handler: async (ctx, args) => {
-    // Storage invariant validation: exactly one of storageId or s3Key must be provided
-    if (!args.storageId && !args.s3Key) {
-      throw new ConvexError({
-        code: "INVALID_STORAGE_ARGS",
-        message: "Must provide either storageId or s3Key",
-      });
-    }
-    if (args.storageId && args.s3Key) {
-      throw new ConvexError({
-        code: "INVALID_STORAGE_ARGS",
-        message: "Cannot provide both storageId and s3Key",
-      });
-    }
     let actingUserId: string;
     let entitlements: Array<string> = [];
 
@@ -718,8 +738,6 @@ export const saveFile = action({
     }
 
     // Determine if we should skip token validation based on mode
-    // Agent mode: files are accessed in sandbox, no token counting needed
-    // Ask mode: files are included in context, token counting required
     const isAgentUploadMode =
       args.mode === "agent" || args.mode === "agent-long";
     const shouldSkipTokenValidation =
@@ -733,88 +751,32 @@ export const saveFile = action({
       });
     }
 
-    // Check file upload rate limit (peek mode - verify limit not exceeded)
-    // Token was already consumed at URL generation step
+    // Rate limit check was already done at generateUploadUrl step (consume=true)
+    // We just peek here to ensure it's still valid
     await checkFileUploadRateLimit(actingUserId, false, { entitlements });
 
     let verifiedSize = args.size;
-    if (args.s3Key) {
-      try {
-        verifiedSize = await getS3ObjectSizeBytes(args.s3Key);
-      } catch (error) {
-        convexLogger.error("file_upload_s3_metadata_fetch_failed", {
-          userId: actingUserId,
-          fileName: args.name,
-          s3Key: args.s3Key,
-          mode: args.mode,
-          error:
-            error instanceof Error
-              ? { name: error.name, message: error.message }
-              : String(error),
-        });
-        throw new ConvexError({
-          code: "FILE_NOT_FOUND",
-          message: `Failed to upload ${args.name}: File not found in storage`,
-        });
+    try {
+      const metadata = await ctx.storage.getMetadata(args.storageId);
+      if (!metadata) {
+        throw new Error("Storage metadata not found");
       }
-
-      const reservation = await ctx.runQuery(
-        internal.fileStorage.getFileByS3Key,
-        { s3Key: args.s3Key },
-      );
-      if (!reservation) {
-        if (isUserScopedS3Key(args.s3Key, actingUserId)) {
-          await ctx.scheduler.runAfter(
-            0,
-            internal.s3Cleanup.deleteS3ObjectAction,
-            { s3Key: args.s3Key },
-          );
-        }
-        throw new ConvexError({
-          code: "INVALID_UPLOAD_RESERVATION",
-          message: `Failed to upload ${args.name}: Upload reservation not found`,
-        });
-      }
-      if (reservation.user_id !== actingUserId) {
-        throw new ConvexError({
-          code: "UNAUTHORIZED_UPLOAD_RESERVATION",
-          message: `Failed to upload ${args.name}: Upload reservation belongs to another user`,
-        });
-      }
-      if (reservation.size !== verifiedSize) {
-        await ctx.scheduler.runAfter(
-          0,
-          internal.s3Cleanup.deleteS3ObjectAction,
-          { s3Key: args.s3Key },
-        );
-        throw new ConvexError({
-          code: "FILE_SIZE_MISMATCH",
-          message: `File "${args.name}" uploaded size does not match the reserved upload size`,
-        });
-      }
-    } else if (args.storageId) {
-      try {
-        const metadata = await ctx.storage.getMetadata(args.storageId);
-        if (!metadata) {
-          throw new Error("Storage metadata not found");
-        }
-        verifiedSize = metadata.size;
-      } catch (error) {
-        convexLogger.error("file_upload_storage_metadata_fetch_failed", {
-          userId: actingUserId,
-          fileName: args.name,
-          storageId: args.storageId,
-          mode: args.mode,
-          error:
-            error instanceof Error
-              ? { name: error.name, message: error.message }
-              : String(error),
-        });
-        throw new ConvexError({
-          code: "FILE_NOT_FOUND",
-          message: `Failed to upload ${args.name}: File not found in storage`,
-        });
-      }
+      verifiedSize = metadata.size;
+    } catch (error) {
+      convexLogger.error("file_upload_storage_metadata_fetch_failed", {
+        userId: actingUserId,
+        fileName: args.name,
+        storageId: args.storageId,
+        mode: args.mode,
+        error:
+          error instanceof Error
+            ? { name: error.name, message: error.message }
+            : String(error),
+      });
+      throw new ConvexError({
+        code: "FILE_NOT_FOUND",
+        message: `Failed to upload ${args.name}: File not found in storage`,
+      });
     }
 
     const uploadLimits = getUploadLimitsForMode(args.mode, {
@@ -827,29 +789,17 @@ export const saveFile = action({
       surface: "backend",
     });
 
-    // Ask-mode uploads are processed for model context; Agent uploads may be
-    // larger because oversized attachments are staged into the sandbox only.
     if (
       !uploadValidation.valid &&
       uploadValidation.code === "FILE_SIZE_EXCEEDED"
     ) {
-      // Clean up storage before throwing error
       try {
-        if (args.s3Key) {
-          await ctx.scheduler.runAfter(
-            0,
-            internal.s3Cleanup.deleteS3ObjectAction,
-            { s3Key: args.s3Key },
-          );
-        } else if (args.storageId) {
-          await ctx.storage.delete(args.storageId);
-        }
+        await ctx.storage.delete(args.storageId);
       } catch (deleteError) {
         convexLogger.warn("file_upload_storage_cleanup_failed", {
           userId: actingUserId,
           fileName: args.name,
           stage: "oversized",
-          s3Key: args.s3Key,
           storageId: args.storageId,
           error:
             deleteError instanceof Error
@@ -868,21 +818,12 @@ export const saveFile = action({
       uploadValidation.code === "IMAGE_SIZE_EXCEEDED"
     ) {
       try {
-        if (args.s3Key) {
-          await ctx.scheduler.runAfter(
-            0,
-            internal.s3Cleanup.deleteS3ObjectAction,
-            { s3Key: args.s3Key },
-          );
-        } else if (args.storageId) {
-          await ctx.storage.delete(args.storageId);
-        }
+        await ctx.storage.delete(args.storageId);
       } catch (deleteError) {
         convexLogger.warn("file_upload_storage_cleanup_failed", {
           userId: actingUserId,
           fileName: args.name,
           stage: "oversized_image",
-          s3Key: args.s3Key,
           storageId: args.storageId,
           error:
             deleteError instanceof Error
@@ -897,14 +838,7 @@ export const saveFile = action({
     }
 
     // Get file content from appropriate storage
-    let fileUrl: string | null;
-    if (args.s3Key) {
-      // Fetch from S3
-      fileUrl = await generateS3DownloadUrl(args.s3Key);
-    } else {
-      // Get from Convex storage
-      fileUrl = await ctx.storage.getUrl(args.storageId!);
-    }
+    const fileUrl = await ctx.storage.getUrl(args.storageId);
 
     if (!fileUrl) {
       throw new ConvexError({
@@ -938,10 +872,8 @@ export const saveFile = action({
 
         const file = await response.blob();
 
-        // Compute file token limit based on subscription (all paid tiers use MAX_TOKENS_PAID)
         const maxFileTokens = Math.floor(MAX_TOKENS_PAID * FILE_TOKEN_PERCENT);
 
-        // Use the comprehensive file processing for all file types (including auto-detection and default handling)
         const chunks = await processFileAuto(
           file,
           args.name,
@@ -952,8 +884,6 @@ export const saveFile = action({
         );
         tokenSize = chunks.reduce((total, chunk) => total + chunk.tokens, 0);
 
-        // Save content for non-image, non-PDF, non-binary files
-        // Note: Unsupported image formats will have content extracted, so we check for supported images
         const shouldSaveContent =
           !isSupportedImageMediaType(args.mediaType) &&
           args.mediaType !== "application/pdf" &&
@@ -962,53 +892,19 @@ export const saveFile = action({
 
         if (shouldSaveContent) {
           const rawContent = chunks.map((chunk) => chunk.content).join("\n\n");
-          // Always truncate content to maxFileTokens before saving to database
-          // This ensures database content field stays reasonable even for agent mode files
           fileContent = truncateContentByTokens(rawContent, maxFileTokens);
         }
       }
     } catch (error) {
-      // Check if this is a ConvexError (including token limit errors) - re-throw as-is
       if (error instanceof ConvexError) {
         const errorData = error.data as { code?: string; message?: string };
-        // Best-effort cleanup: delete storage before re-throwing
-        if (errorData?.code === "FILE_TOKEN_LIMIT_EXCEEDED") {
-          convexLogger.warn("file_upload_token_limit_exceeded", {
-            userId: actingUserId,
-            fileName: args.name,
-            size: args.size,
-            mediaType: args.mediaType,
-            mode: args.mode,
-            errorCode: errorData.code,
-            errorMessage: errorData.message,
-          });
-        } else {
-          convexLogger.error("file_upload_processing_convex_error", {
-            userId: actingUserId,
-            fileName: args.name,
-            size: args.size,
-            mediaType: args.mediaType,
-            mode: args.mode,
-            errorCode: errorData?.code,
-            errorMessage: errorData?.message,
-          });
-        }
         try {
-          if (args.s3Key) {
-            await ctx.scheduler.runAfter(
-              0,
-              internal.s3Cleanup.deleteS3ObjectAction,
-              { s3Key: args.s3Key },
-            );
-          } else if (args.storageId) {
-            await ctx.storage.delete(args.storageId);
-          }
+          await ctx.storage.delete(args.storageId);
         } catch (cleanupError) {
           convexLogger.warn("file_upload_storage_cleanup_failed", {
             userId: actingUserId,
             fileName: args.name,
             stage: "post_processing_error",
-            s3Key: args.s3Key,
             storageId: args.storageId,
             error:
               cleanupError instanceof Error
@@ -1016,39 +912,20 @@ export const saveFile = action({
                 : String(cleanupError),
           });
         }
-        throw error; // Re-throw ConvexError as-is
+        throw error;
       }
 
-      // Check if this is a token limit error (legacy Error format)
       if (
         error instanceof Error &&
         error.message.includes("exceeds the maximum token limit")
       ) {
-        convexLogger.warn("file_upload_token_limit_exceeded", {
-          userId: actingUserId,
-          fileName: args.name,
-          size: args.size,
-          mediaType: args.mediaType,
-          mode: args.mode,
-          errorMessage: error.message,
-        });
-        // Best-effort cleanup before throwing standardized error
         try {
-          if (args.s3Key) {
-            await ctx.scheduler.runAfter(
-              0,
-              internal.s3Cleanup.deleteS3ObjectAction,
-              { s3Key: args.s3Key },
-            );
-          } else if (args.storageId) {
-            await ctx.storage.delete(args.storageId);
-          }
+          await ctx.storage.delete(args.storageId);
         } catch (cleanupError) {
           convexLogger.warn("file_upload_storage_cleanup_failed", {
             userId: actingUserId,
             fileName: args.name,
             stage: "post_processing_error",
-            s3Key: args.s3Key,
             storageId: args.storageId,
             error:
               cleanupError instanceof Error
@@ -1056,14 +933,12 @@ export const saveFile = action({
                 : String(cleanupError),
           });
         }
-        // Convert to ConvexError for consistent error handling
         throw new ConvexError({
           code: "FILE_TOKEN_LIMIT_EXCEEDED",
           message: error.message,
         });
       }
 
-      // For any other unexpected errors, delete storage and wrap with file name
       convexLogger.error("file_upload_processing_unexpected_error", {
         userId: actingUserId,
         fileName: args.name,
@@ -1075,23 +950,13 @@ export const saveFile = action({
             ? { name: error.name, message: error.message, stack: error.stack }
             : String(error),
       });
-      // Best-effort cleanup before throwing standardized error
       try {
-        if (args.s3Key) {
-          await ctx.scheduler.runAfter(
-            0,
-            internal.s3Cleanup.deleteS3ObjectAction,
-            { s3Key: args.s3Key },
-          );
-        } else if (args.storageId) {
-          await ctx.storage.delete(args.storageId);
-        }
+        await ctx.storage.delete(args.storageId);
       } catch (cleanupError) {
         convexLogger.warn("file_upload_storage_cleanup_failed", {
           userId: actingUserId,
           fileName: args.name,
           stage: "post_unexpected_error",
-          s3Key: args.s3Key,
           storageId: args.storageId,
           error:
             cleanupError instanceof Error
@@ -1106,10 +971,8 @@ export const saveFile = action({
       });
     }
 
-    // Use internal mutation to save to database
     const fileId = (await ctx.runMutation(internal.fileStorage.saveFileToDb, {
       storageId: args.storageId,
-      s3Key: args.s3Key,
       userId: actingUserId,
       name: args.name,
       mediaType: args.mediaType,
@@ -1118,7 +981,6 @@ export const saveFile = action({
       content: fileContent,
     })) as Id<"files">;
 
-    // Return the file URL, database file ID, and token count
     return {
       url: fileUrl,
       fileId,
@@ -1129,14 +991,10 @@ export const saveFile = action({
 
 /**
  * Save metadata for an assistant-generated sandbox artifact.
- *
- * These files are download-only artifacts produced by tools like
- * get_terminal_files, not prompt attachments. Avoid fetching or parsing the
- * object here so large generated archives do not consume Convex memory.
  */
 export const saveSandboxGeneratedFile = action({
   args: {
-    s3Key: v.string(),
+    storageId: v.id("_storage"),
     name: v.string(),
     mediaType: v.string(),
     size: v.number(),
@@ -1155,19 +1013,13 @@ export const saveSandboxGeneratedFile = action({
 
     const cleanupUploadedObject = async (stage: string) => {
       try {
-        await ctx.scheduler.runAfter(
-          0,
-          internal.s3Cleanup.deleteS3ObjectAction,
-          {
-            s3Key: args.s3Key,
-          },
-        );
+        await ctx.storage.delete(args.storageId);
       } catch (deleteError) {
         convexLogger.warn("file_upload_storage_cleanup_failed", {
           userId: args.userId,
           fileName: args.name,
           stage,
-          s3Key: args.s3Key,
+          storageId: args.storageId,
           error:
             deleteError instanceof Error
               ? { name: deleteError.name, message: deleteError.message }
@@ -1194,9 +1046,11 @@ export const saveSandboxGeneratedFile = action({
     }
 
     try {
-      const fileUrl = await generateS3DownloadUrl(args.s3Key);
+      const fileUrl = await ctx.storage.getUrl(args.storageId);
+      if (!fileUrl) throw new Error("Failed to get storage URL");
+
       const fileId = (await ctx.runMutation(internal.fileStorage.saveFileToDb, {
-        s3Key: args.s3Key,
+        storageId: args.storageId,
         userId: args.userId,
         name: args.name,
         mediaType: args.mediaType,

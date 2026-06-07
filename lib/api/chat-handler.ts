@@ -429,8 +429,7 @@ export const createChatHandler = () => {
                 fileId: Id<"files">;
                 name: string;
                 mediaType: string;
-                s3Key?: string;
-                storageId?: Id<"_storage">;
+                storageId: Id<"_storage">;
               }>,
             ) => {
               if (!fileMetadata || fileMetadata.length === 0) return;

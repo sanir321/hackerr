@@ -52,13 +52,6 @@ async function deleteNextUserChatBatch(ctx: MutationCtx, userId: string) {
           try {
             const file = await ctx.db.get(storageId);
             if (file) {
-              if (file.s3_key) {
-                await ctx.scheduler.runAfter(
-                  0,
-                  internal.s3Cleanup.deleteS3ObjectAction,
-                  { s3Key: file.s3_key },
-                );
-              }
               if (file.storage_id) {
                 await ctx.storage.delete(file.storage_id);
               }
@@ -741,14 +734,6 @@ export const deleteChat = mutation({
               try {
                 const file = await ctx.db.get(storageId);
                 if (file) {
-                  // Delete from appropriate storage
-                  if (file.s3_key) {
-                    await ctx.scheduler.runAfter(
-                      0,
-                      internal.s3Cleanup.deleteS3ObjectAction,
-                      { s3Key: file.s3_key },
-                    );
-                  }
                   if (file.storage_id) {
                     await ctx.storage.delete(file.storage_id);
                   }
@@ -1019,13 +1004,6 @@ export const deleteAllChatsForUser = mutation({
             try {
               const file = await ctx.db.get(storageId);
               if (file) {
-                if (file.s3_key) {
-                  await ctx.scheduler.runAfter(
-                    0,
-                    internal.s3Cleanup.deleteS3ObjectAction,
-                    { s3Key: file.s3_key },
-                  );
-                }
                 if (file.storage_id) {
                   await ctx.storage.delete(file.storage_id);
                 }

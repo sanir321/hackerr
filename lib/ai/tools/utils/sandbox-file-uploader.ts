@@ -6,7 +6,6 @@ import { Id } from "@/convex/_generated/dataModel";
 import type { AnySandbox } from "@/types";
 import { isE2BSandbox } from "./sandbox-types";
 import { buildSandboxCommandOptions } from "./sandbox-command-options";
-import { generateS3UploadUrl } from "@/convex/s3Utils";
 import { getConvexClient } from "@/lib/db/convex-client";
 import { MAX_GENERATED_FILE_SIZE_BYTES } from "@/lib/constants/s3";
 import { logger } from "@/lib/logger";
@@ -24,8 +23,7 @@ export type UploadedFileInfo = {
   // Metadata for file accumulator (avoids re-querying DB)
   name: string;
   mediaType: string;
-  s3Key?: string;
-  storageId?: Id<"_storage">;
+  storageId: Id<"_storage">;
 };
 
 /**
@@ -246,28 +244,41 @@ function commandErrorToResult(error: unknown): SandboxCommandResult | null {
   };
 }
 
-function parseUploadResult(result: SandboxCommandResult): SandboxCommandResult {
-  const statusMatch = result.stdout.match(
-    new RegExp(`(?:^|\\n)${SANDBOX_UPLOAD_STATUS_MARKER}(\\d+)(?:\\n|$)`),
-  );
+function parseUploadResult(result: SandboxCommandResult): {
+  storageId: string;
+  exitCode: number;
+  stderr: string;
+  stdout: string;
+} {
+  const lines = result.stdout.split("\n");
+  let exitCode = result.exitCode;
+  let storageId = "";
 
-  if (!statusMatch) return result;
+  // The last line should be our status marker if the command finished normally
+  const lastLine = lines[lines.length - 1];
+  if (lastLine.startsWith(SANDBOX_UPLOAD_STATUS_MARKER)) {
+    exitCode = Number(lastLine.replace(SANDBOX_UPLOAD_STATUS_MARKER, ""));
+    // The line before the marker should contain the JSON response from Convex
+    const jsonLine = lines[lines.length - 2];
+    try {
+      const response = JSON.parse(jsonLine);
+      storageId = response.storageId;
+    } catch (e) {
+      console.error("Failed to parse Convex upload response:", jsonLine, e);
+    }
+  }
 
   return {
-    stdout: result.stdout
-      .replace(
-        new RegExp(`(?:^|\\n)${SANDBOX_UPLOAD_STATUS_MARKER}\\d+(?:\\n|$)`),
-        "\n",
-      )
-      .trim(),
+    storageId,
+    exitCode,
     stderr: result.stderr,
-    exitCode: Number(statusMatch[1]),
+    stdout: result.stdout,
   };
 }
 
 function formatUploadFailure(
   fullPath: string,
-  result: SandboxCommandResult,
+  result: { exitCode: number; stderr: string; stdout: string },
 ): Error {
   return new Error(
     `Failed to upload file ${fullPath}: ${
@@ -278,17 +289,19 @@ function formatUploadFailure(
   );
 }
 
-async function uploadGeneratedFileFromSandboxToUrl(args: {
+async function uploadGeneratedFileFromSandboxToConvex(args: {
   sandbox: AnySandbox;
   fullPath: string;
   uploadUrl: string;
   mediaType: string;
-}): Promise<void> {
+}): Promise<Id<"_storage">> {
   const { sandbox, fullPath, uploadUrl, mediaType } = args;
   const fileName = getFileNameFromPath(fullPath);
 
   let result: SandboxCommandResult;
-  const uploadCommand = `curl -fsSL -X PUT -H ${shellQuote(`Content-Type: ${mediaType}`)} --data-binary @${shellQuote(fullPath)} ${shellQuote(uploadUrl)}`;
+  // Convex generateUploadUrl expects a POST request.
+  // We use -s to suppress progress bar, -f to fail on HTTP errors.
+  const uploadCommand = `curl -s -f -X POST -H ${shellQuote(`Content-Type: ${mediaType}`)} --data-binary @${shellQuote(fullPath)} ${shellQuote(uploadUrl)}`;
   try {
     result = await sandbox.commands.run(
       `${uploadCommand}; status=$?; printf '\\n${SANDBOX_UPLOAD_STATUS_MARKER}%s\\n' "$status"; exit 0`,
@@ -319,9 +332,9 @@ async function uploadGeneratedFileFromSandboxToUrl(args: {
     }
   }
 
-  result = parseUploadResult(result);
+  const parsed = parseUploadResult(result);
 
-  if (result.exitCode !== 0) {
+  if (parsed.exitCode !== 0 || !parsed.storageId) {
     logger.error("sandbox_generated_file_upload_failed", undefined, {
       event: "sandbox_generated_file_upload_failed",
       service: "chat-handler",
@@ -329,12 +342,14 @@ async function uploadGeneratedFileFromSandboxToUrl(args: {
       file_name: fileName,
       file_path: fullPath,
       media_type: mediaType,
-      exit_code: result.exitCode,
-      stderr: result.stderr?.slice(0, 500),
-      stdout: result.stdout?.slice(0, 500),
+      exit_code: parsed.exitCode,
+      stderr: parsed.stderr?.slice(0, 500),
+      stdout: parsed.stdout?.slice(0, 500),
     });
-    throw formatUploadFailure(fullPath, result);
+    throw formatUploadFailure(fullPath, parsed);
   }
+
+  return parsed.storageId as Id<"_storage">;
 }
 
 export async function uploadSandboxFileToConvex(args: {
@@ -377,16 +392,11 @@ export async function uploadSandboxFileToConvex(args: {
   const convex = getConvexClient();
 
   let uploadUrl: string;
-  let s3Key: string;
   try {
-    const generatedUrl = await generateS3UploadUrl(
-      name,
-      mediaType,
+    uploadUrl = await convex.action(api.fileActions.generateUploadUrl, {
+      serviceKey: process.env.CONVEX_SERVICE_ROLE_KEY!,
       userId,
-      fileSize,
-    );
-    uploadUrl = generatedUrl.uploadUrl;
-    s3Key = generatedUrl.s3Key;
+    });
   } catch (error) {
     logger.error(
       "sandbox_generated_file_upload_url_failed",
@@ -406,8 +416,9 @@ export async function uploadSandboxFileToConvex(args: {
     throw error;
   }
 
+  let storageId: Id<"_storage">;
   try {
-    await uploadGeneratedFileFromSandboxToUrl({
+    storageId = await uploadGeneratedFileFromSandboxToConvex({
       sandbox,
       fullPath,
       uploadUrl,
@@ -425,7 +436,6 @@ export async function uploadSandboxFileToConvex(args: {
         file_path: fullPath,
         media_type: mediaType,
         size_bytes: fileSize,
-        s3_key: s3Key,
         sandbox_type: getSandboxLogType(sandbox),
         error: errorToLog(error),
       },
@@ -437,7 +447,7 @@ export async function uploadSandboxFileToConvex(args: {
     const saved = await convex.action(
       api.fileActions.saveSandboxGeneratedFile,
       {
-        s3Key,
+        storageId,
         name,
         mediaType,
         size: fileSize,
@@ -450,7 +460,7 @@ export async function uploadSandboxFileToConvex(args: {
       ...saved,
       name,
       mediaType,
-      s3Key,
+      storageId,
     } as UploadedFileInfo;
   } catch (error) {
     logger.error(
