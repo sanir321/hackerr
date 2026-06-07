@@ -44,8 +44,6 @@ function getReferralRewardConfig() {
   };
 }
 
-export const runtime = "nodejs";
-
 const UNAUTHENTICATED_PATHS = new Set([
   "/",
   "/login",
