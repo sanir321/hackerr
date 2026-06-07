@@ -1,4 +1,4 @@
-import { after, NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 import { workos } from "@/app/api/workos";
@@ -10,7 +10,6 @@ import {
   isValidReferralCode,
 } from "@/lib/referrals/config";
 import { grantFreeReferralBonusUnits } from "@/lib/rate-limit/sliding-window";
-import { phLogger } from "@/lib/posthog/server";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -99,7 +98,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (!grant.granted && !grant.alreadyGranted) {
-        phLogger.warn("referral_signup_bonus_grant_failed", {
+        console.warn("referral_signup_bonus_grant_failed", {
           userId,
           referrer_user_id: result.referrerUserId,
           referral_code: referralCode,
@@ -107,7 +106,7 @@ export async function POST(req: NextRequest) {
         });
       }
     } catch (error) {
-      phLogger.warn("referral_signup_bonus_grant_failed", {
+      console.warn("referral_signup_bonus_grant_failed", {
         userId,
         referrer_user_id: result.referrerUserId,
         referral_code: referralCode,
@@ -118,7 +117,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (result.status === "attributed") {
-    phLogger.event("referred_signup_attributed", {
+    console.log("referred_signup_attributed", {
       userId,
       referrer_user_id: result.referrerUserId,
       referral_code: referralCode,
@@ -126,7 +125,7 @@ export async function POST(req: NextRequest) {
       starter_bonus_units: starterBonusUnits,
     });
   } else if (result.status === "blocked" || result.status === "not_found") {
-    phLogger.event("referral_reward_withheld", {
+    console.log("referral_reward_withheld", {
       userId,
       referrer_user_id: result.referrerUserId,
       referral_code: referralCode,
@@ -134,7 +133,6 @@ export async function POST(req: NextRequest) {
       reward_type: "referred_signup",
     });
   }
-  after(() => phLogger.flush());
 
   const response = NextResponse.json({
     attributed:

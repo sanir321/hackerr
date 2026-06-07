@@ -5,7 +5,7 @@ import { ModeSelectorTrigger, ModeSelectorContent } from "./ModeSelectorMenu";
 import { useGlobalState } from "@/app/contexts/GlobalState";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
 import { toast } from "sonner";
-import { navigateToAuth } from "@/app/hooks/useTauri";
+
 
 export interface ChatModeSelectorProps {
   className?: string;
@@ -21,7 +21,7 @@ export function ChatModeSelector({ className }: ChatModeSelectorProps) {
 
   const handleAgentModeClick = () => {
     if (!user) {
-      navigateToAuth("/signup", { preferSignInForReturningUser: true });
+      window.location.href = "/signup";
       return;
     }
     if (temporaryChatsEnabled) {

@@ -3,7 +3,6 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useGlobalState } from "../contexts/GlobalState";
 import { useLatestRef } from "@/app/hooks/useLatestRef";
-import { isTauriEnvironment } from "@/app/hooks/useTauri";
 import { shouldUseAgentLongForAgent } from "@/lib/chat/agent-routing";
 import { isAgentMode } from "@/lib/utils/mode-helpers";
 import type { ChatMessage, ChatStatus } from "@/types";
@@ -25,7 +24,6 @@ import {
   createFileMessagePartFromUploadedFile,
   getMaxFilesLimitForMode,
 } from "@/lib/utils/file-utils";
-import { hasRestageableLocalDesktopAttachments } from "@/lib/utils/local-attachment-messages";
 
 interface UseChatHandlersProps {
   chatId: string;
@@ -96,9 +94,8 @@ export const useChatHandlers = ({
     file.uploaded &&
     !file.uploading &&
     !file.error &&
-    (file.storage === "local-desktop"
-      ? !!file.localAttachmentId && !!file.localPath
-      : !!file.url && !!file.fileId);
+    !!file.url &&
+    !!file.fileId;
 
   const deleteLastAssistantMessage = useMutation(
     api.messages.deleteLastAssistantMessage,
@@ -120,8 +117,6 @@ export const useChatHandlers = ({
     !temporaryChatsEnabledRef.current &&
     shouldUseAgentLongForAgent({
       mode: chatModeRef.current,
-      subscription: subscriptionRef.current,
-      isTauri: isTauriEnvironment(),
     });
 
   const cancelTriggerRun = () => {
@@ -417,11 +412,7 @@ export const useChatHandlers = ({
     const trimmedMessages = getMessagesUpToLastRealUser(messages);
     setMessages(trimmedMessages);
 
-    const shouldSendClientMessagesForRegenerate =
-      hasRestageableLocalDesktopAttachments(trimmedMessages);
-    const persistentRegenerateMessages = shouldSendClientMessagesForRegenerate
-      ? trimmedMessages
-      : [];
+    const persistentRegenerateMessages: ChatMessage[] = [];
 
     if (!temporaryChatsEnabled) {
       // Delete the entire trailing auto-continue chain (all assistant + hidden user messages)
@@ -439,7 +430,6 @@ export const useChatHandlers = ({
           messages: persistentRegenerateMessages,
           todos: cleanedTodos,
           regenerate: true,
-          useClientMessagesForRegenerate: shouldSendClientMessagesForRegenerate,
           temporary: false,
           sandboxPreference,
           selectedModel,

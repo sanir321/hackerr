@@ -10,7 +10,7 @@ import { useFileUrlCacheContext } from "@/app/contexts/FileUrlCacheContext";
 import type { FilePart } from "@/types/file";
 import JSZip from "jszip";
 import { toast } from "sonner";
-import { isTauriEnvironment, openDownloadsFolder } from "@/app/hooks/useTauri";
+
 
 interface AllFilesDialogProps {
   open: boolean;
@@ -59,15 +59,6 @@ const FileItem = ({
       document.body.removeChild(link);
       URL.revokeObjectURL(blobUrl);
 
-      if (isTauriEnvironment()) {
-        toast.success(`Downloaded ${fileName}`, {
-          description: "Saved to Downloads folder",
-          action: {
-            label: "Show in folder",
-            onClick: () => openDownloadsFolder(),
-          },
-        });
-      }
     } catch (error) {
       console.error("Error downloading file:", error);
       toast.error("Failed to download file");
@@ -336,19 +327,9 @@ const AllFilesDialog = ({
       document.body.removeChild(link);
       URL.revokeObjectURL(blobUrl);
 
-      if (isTauriEnvironment()) {
-        toast.success(`Downloaded ${filesToDownload.length} files`, {
-          description: `Saved as ${fileName}.zip to Downloads folder`,
-          action: {
-            label: "Show in folder",
-            onClick: () => openDownloadsFolder(),
-          },
-        });
-      } else {
-        toast.success(
-          `Downloaded ${filesToDownload.length} files as ${fileName}.zip`,
-        );
-      }
+      toast.success(
+        `Downloaded ${filesToDownload.length} files as ${fileName}.zip`,
+      );
     } catch (error) {
       console.error("Error creating ZIP file:", error);
       toast.error("Failed to create ZIP file");

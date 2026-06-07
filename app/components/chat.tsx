@@ -33,11 +33,8 @@ import {
   resumeAgentLongStream,
 } from "@/lib/chat/agent-long-transport";
 import {
-  LEGACY_DESKTOP_AGENT_UPDATE_MESSAGE,
-  isLegacyDesktopAgentClient,
   shouldUseAgentLongForAgent,
 } from "@/lib/chat/agent-routing";
-import { isTauriEnvironment } from "@/app/hooks/useTauri";
 import { stripAgentLongHeartbeatPartsFromMessages } from "@/lib/chat/agent-long-heartbeat";
 import { toast } from "sonner";
 import type { Todo, ChatMessage, ChatMode, SandboxPreference } from "@/types";
@@ -311,7 +308,6 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
   const needsConnectionValidation =
     !!storedSandboxType &&
     storedSandboxType !== "e2b" &&
-    storedSandboxType !== "tauri" &&
     !hasInitializedSandboxRef.current;
   const localConnections = useQuery(
     api.localSandbox.listConnections,
@@ -350,17 +346,8 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
       api: "/api/chat",
       fetch: async (input, init) => {
         const mode = chatModeRef.current;
-        const isTauri = isTauriEnvironment();
-        if (isLegacyDesktopAgentClient({ mode, isTauri })) {
-          throw new ChatSDKError(
-            "forbidden:chat",
-            LEGACY_DESKTOP_AGENT_UPDATE_MESSAGE,
-          );
-        }
         const useTriggerAgent = shouldUseAgentLongForAgent({
           mode,
-          subscription: subscriptionRef.current,
-          isTauri,
         });
         if (useTriggerAgent) {
           // useChat reuses this fetch for both POST sendMessages and GET
@@ -396,8 +383,6 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
         // when the current run is using Trigger.dev for agent mode.
         const useTriggerAgent = shouldUseAgentLongForAgent({
           mode: chatModeRef.current,
-          subscription: subscriptionRef.current,
-          isTauri: isTauriEnvironment(),
         });
         if (useTriggerAgent || !!activeTriggerRunRef.current) {
           return {
@@ -551,13 +536,6 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
             actualSandbox: string;
             actualSandboxName?: string;
           };
-
-          // Skip fallback notifications for Tauri — the server-side health check
-          // hits its own localhost, not the user's desktop, so it consistently
-          // reports false disconnects. The frontend already validated Tauri availability.
-          if (fallbackData.requestedPreference === "tauri") {
-            break;
-          }
 
           // Update sandbox preference to match actual sandbox used
           setSandboxPreference(fallbackData.actualSandbox as unknown as SandboxPreference);
@@ -763,14 +741,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     if (storedSandboxType === "e2b") {
       setSandboxPreference("e2b");
       hasInitializedSandboxRef.current = true;
-    } else if (storedSandboxType === "tauri") {
-      // "tauri" is a legacy preference — desktop now uses "desktop"
-      setSandboxPreference("e2b");
-      hasInitializedSandboxRef.current = true;
-    } else if (storedSandboxType === "desktop") {
-      // Desktop preference — no longer supported, reset to cloud
-      setSandboxPreference("e2b");
-      hasInitializedSandboxRef.current = true;
+
     } else if (localConnections !== undefined) {
       // For remote connectionIds, validate the connection still exists
       const connectionExists = localConnections.some(
@@ -1260,7 +1231,6 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
                         )}
                       </div>
 
-                      {/* Centered input (desktop only) */}
                       {!isMobile && (
                         <div className="w-full">
                           <ChatInput

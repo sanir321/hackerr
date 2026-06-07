@@ -38,13 +38,8 @@ import { UsageTracker } from "@/lib/usage-tracker";
 import { getMaxTokensForSubscription } from "@/lib/token-utils";
 import { countTokens } from "gpt-tokenizer";
 import { ChatSDKError } from "@/lib/errors";
-import PostHogClient from "@/app/posthog";
 import {
-  captureAgentCompletionAnalytics,
-  captureToolCalls,
-  captureUsageCost,
   createChatLogger,
-  shutdownPostHog,
   type ChatLogger,
 } from "@/lib/api/chat-logger";
 import {
@@ -88,7 +83,6 @@ import {
   uploadSandboxFiles,
   getUploadBasePath,
   rewriteSandboxFilePathsInMessages,
-  stripLocalDesktopSourcePaths,
 } from "@/lib/utils/sandbox-file-utils";
 import { getEmptyProcessedMessagesCause } from "@/lib/utils/local-attachment-messages";
 import { after } from "next/server";
@@ -100,7 +94,6 @@ import {
 } from "@/lib/utils/stream-writer-utils";
 import { Id } from "@/convex/_generated/dataModel";
 import { getMaxStepsForUser } from "@/lib/chat/chat-processor";
-import { phLogger } from "@/lib/posthog/server";
 import {
   extractErrorDetails,
   getUserFriendlyProviderError,
@@ -246,7 +239,7 @@ export const createChatHandler = () => {
         await handleInitialChatAndUserMessage({
           chatId,
           userId,
-          messages: stripLocalDesktopSourcePaths(truncatedMessages),
+          messages: truncatedMessages,
           regenerate,
           chat,
           isHidden: isAutoContinue ? true : undefined,
@@ -271,7 +264,6 @@ export const createChatHandler = () => {
           subscription,
           uploadBasePath,
           modelOverride: selectedModelOverride,
-          allowLocalDesktopFiles: false,
         });
 
       // Empty after processing → Gemini rejects with "must include at least one parts field".
@@ -346,8 +338,6 @@ export const createChatHandler = () => {
         extraUsageConfig,
       );
 
-      // PostHog client for analytics (initialized once, used at end of request)
-      const posthog = PostHogClient();
 
       const assistantMessageId = uuidv4();
       chatLogger.getBuilder().setAssistantId(assistantMessageId);
@@ -477,7 +467,7 @@ export const createChatHandler = () => {
             if (isAgentMode(mode) && sandboxFiles && sandboxFiles.length > 0) {
               writeUploadStartStatus(
                 writer,
-                sandboxFiles.every((file) => file.kind === "localPath")
+                false
                   ? "Preparing local attachments on your computer"
                   : "Uploading attachments to the computer",
               );
@@ -691,16 +681,7 @@ export const createChatHandler = () => {
                     rateLimitInfo,
                   });
                 }
-                captureUsageCost({
-                  posthog,
-                  userId,
-                  subscription,
-                  organizationId,
-                  chatId,
-                  endpoint,
-                  mode,
-                  usage: usageCostRecord,
-                });
+
               } finally {
                 await releaseFreeRunLockOnce();
               }
@@ -755,23 +736,6 @@ export const createChatHandler = () => {
                 !isRetryWithFallback &&
                 isAutoModel
               ) {
-                phLogger.error("Provider API error, retrying with fallback", {
-                  error,
-                  chatId,
-                  endpoint,
-                  mode,
-                  originalModel: selectedModel,
-                  requestedModelSlug: configuredModelId,
-                  fallbackModel,
-                  fallbackModelSlug: fallbackModelId,
-                  userId,
-                  subscription,
-                  isTemporary: temporary,
-                  preFallbackCacheReadTokens: usageTracker.cacheReadTokens,
-                  preFallbackCacheWriteTokens: usageTracker.cacheWriteTokens,
-                  ...extractErrorDetails(error),
-                });
-
                 isRetryWithFallback = true;
                 state.lastStepInputTokens = 0;
                 state.stoppedDueToTokenExhaustion = false;
@@ -824,23 +788,6 @@ export const createChatHandler = () => {
                       lastAssistantMessage.parts[0]?.type === "step-start";
 
                     if (hasOnlyStepStart) {
-                      phLogger.warn(
-                        "Stream finished incomplete - triggering fallback",
-                        {
-                          chatId,
-                          endpoint,
-                          mode,
-                          model: selectedModel,
-                          userId,
-                          subscription,
-                          isTemporary: temporary,
-                          messageCount: messages.length,
-                          parts: lastAssistantMessage?.parts,
-                          isRetryWithFallback,
-                          assistantMessageId,
-                        },
-                      );
-
                       // Retry with fallback model if not already retrying (only for auto models)
                       if (!isRetryWithFallback && !isAborted && isAutoModel) {
                         isRetryWithFallback = true;
@@ -916,27 +863,12 @@ export const createChatHandler = () => {
                                   cacheReadTokens: fallbackCacheRead,
                                   cacheWriteTokens: fallbackCacheWrite,
                                 });
-                                captureToolCalls({
-                                  posthog,
-                                  chatLogger,
-                                  userId,
-                                  mode,
-                                });
+
                                 const outcome = retryAborted
                                   ? "aborted"
                                   : "success";
-                                captureAgentCompletionAnalytics({
-                                  posthog,
-                                  userId,
-                                  chatId,
-                                  endpoint,
-                                  mode,
-                                  subscription,
-                                  sandboxInfo,
-                                  outcome,
-                                  chatLogger,
-                                });
-                                shutdownPostHog(posthog);
+
+
                                 chatLogger!.emitSuccess({
                                   finishReason: state.streamFinishReason,
                                   wasAborted: retryAborted,
@@ -1032,38 +964,7 @@ export const createChatHandler = () => {
                                     (p) => p.type,
                                   ) ?? [];
 
-                                phLogger.info("Fallback completed", {
-                                  chatId,
-                                  endpoint,
-                                  mode,
-                                  originalModel: selectedModel,
-                                  originalAssistantMessageId:
-                                    assistantMessageId,
-                                  fallbackModel,
-                                  fallbackAssistantMessageId: retryMessageId,
-                                  fallbackDurationMs:
-                                    Date.now() - fallbackStartTime,
-                                  fallbackSuccess: fallbackHasContent,
-                                  fallbackWasAborted: retryAborted,
-                                  fallbackMessageCount: retryMessages.length,
-                                  fallbackPartTypes,
-                                  preFallbackCacheReadTokens:
-                                    preFallbackCacheRead,
-                                  preFallbackCacheWriteTokens:
-                                    preFallbackCacheWrite,
-                                  fallbackCacheReadTokens: fallbackCacheRead,
-                                  fallbackCacheWriteTokens: fallbackCacheWrite,
-                                  fallbackCacheHitRate:
-                                    fallbackCacheTotal > 0
-                                      ? fallbackCacheRead / fallbackCacheTotal
-                                      : null,
-                                  userId,
-                                  subscription,
-                                  isTemporary: temporary,
-                                  paidAskMode:
-                                    mode === "ask" && subscription !== "free",
-                                });
-
+                                
                                 // Deduct accumulated usage (includes both original + retry streams)
                                 await deductAccumulatedUsage();
                               } finally {
@@ -1085,31 +986,12 @@ export const createChatHandler = () => {
                     const triggerTime = preemptiveTimeout?.getTriggerTime();
 
                     // Helper to log step timing during preemptive timeout
-                    const logStep = (step: string, stepStartTime: number) => {
-                      if (isPreemptiveAbort) {
-                        const stepDuration = Date.now() - stepStartTime;
-                        const totalElapsed =
-                          Date.now() - (triggerTime || onFinishStartTime);
-                        phLogger.info("Preemptive timeout cleanup step", {
-                          chatId,
-                          step,
-                          stepDurationMs: stepDuration,
-                          totalElapsedSinceTriggerMs: totalElapsed,
-                          endpoint,
-                        });
-                      }
+                    const logStep = (_step: string, _stepStartTime: number) => {
+                      return;
                     };
 
                     if (isPreemptiveAbort) {
-                      phLogger.info("Preemptive timeout onFinish started", {
-                        chatId,
-                        endpoint,
-                        timeSinceTriggerMs: triggerTime
-                          ? onFinishStartTime - triggerTime
-                          : null,
-                        messageCount: messages.length,
-                        isTemporary: temporary,
-                      });
+                      // preemptive abort analytics removed
                     }
 
                     // Clear pre-emptive timeout
@@ -1138,20 +1020,9 @@ export const createChatHandler = () => {
                       cacheReadTokens: usageTracker.cacheReadTokens,
                       cacheWriteTokens: usageTracker.cacheWriteTokens,
                     });
-                    captureToolCalls({ posthog, chatLogger, userId, mode });
+
                     const outcome = isAborted ? "aborted" : "success";
-                    captureAgentCompletionAnalytics({
-                      posthog,
-                      userId,
-                      chatId,
-                      endpoint,
-                      mode,
-                      subscription,
-                      sandboxInfo,
-                      outcome,
-                      chatLogger,
-                    });
-                    shutdownPostHog(posthog);
+
                     chatLogger!.emitSuccess({
                       finishReason: state.streamFinishReason,
                       wasAborted: isAborted,
@@ -1407,15 +1278,7 @@ export const createChatHandler = () => {
 
                     if (isPreemptiveAbort) {
                       const totalDuration = Date.now() - onFinishStartTime;
-                      phLogger.info("Preemptive timeout onFinish completed", {
-                        chatId,
-                        endpoint,
-                        totalOnFinishDurationMs: totalDuration,
-                        totalSinceTriggerMs: triggerTime
-                          ? Date.now() - triggerTime
-                          : null,
-                      });
-                      await phLogger.flush();
+                      // preemptive abort timing analytics removed
                     }
 
                     // Send updated context usage with output tokens included
@@ -1478,10 +1341,7 @@ export const createChatHandler = () => {
             }
           } catch (error) {
             // Non-fatal: stream still works without resumability
-            phLogger.warn("Stream resumption setup failed", {
-              chatId,
-              error: error instanceof Error ? error.message : String(error),
-            });
+            console.warn("stream resumability setup failed", error);
           }
         },
       });

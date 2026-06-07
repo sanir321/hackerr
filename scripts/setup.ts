@@ -256,15 +256,6 @@ E2B_TEMPLATE=terminal-agent-sandbox
 # NEXT_PUBLIC_FF_CROSS_TAB_TOKEN_SHARING=0
 
 # =============================================================================
-# ANALYTICS & OBSERVABILITY (Optional - PostHog)
-# =============================================================================
-# Sign up at: https://posthog.com/
-# Used for product analytics, tool-call events, and server error tracking.
-# NEXT_PUBLIC_POSTHOG_KEY=phc_
-# NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
-# NEXT_PUBLIC_POSTHOG_TRACK_FREE_USERS=true
-
-# =============================================================================
 # BASE URL (Required)
 # =============================================================================
 NEXT_PUBLIC_BASE_URL=${envVars.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}

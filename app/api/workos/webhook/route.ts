@@ -1,10 +1,9 @@
-import { after, NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import type { Event } from "@workos-inc/node";
 import { api } from "@/convex/_generated/api";
 import { workos } from "@/app/api/workos";
 import { captureUserSignedUp } from "@/lib/analytics/user-signup";
-import { phLogger } from "@/lib/posthog/server";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -102,8 +101,6 @@ export async function POST(req: NextRequest) {
     );
     return NextResponse.json({ error: "Handler failed" }, { status: 500 });
   }
-
-  after(() => phLogger.flush());
 
   try {
     await convex.mutation(api.extraUsage.finalizeWebhookProcessing, {

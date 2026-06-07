@@ -7,7 +7,6 @@ import {
   getCancelChannel,
 } from "@/lib/utils/redis-pubsub";
 import { createClient } from "redis";
-import { phLogger } from "@/lib/posthog/server";
 
 // Use the same type as redis-pubsub.ts
 type RedisClient = ReturnType<typeof createClient>;
@@ -228,7 +227,7 @@ export const createPreemptiveTimeout = ({
     triggerTime = Date.now();
     isPreemptive = true;
 
-    phLogger.info("Preemptive timeout triggered", {
+    console.warn("[preemptive_timeout]", {
       chatId,
       endpoint,
       maxDuration,

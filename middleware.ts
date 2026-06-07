@@ -53,11 +53,8 @@ const UNAUTHENTICATED_PATHS = new Set([
   "/signup/auth",
   "/logout",
   "/api/clear-auth-cookies",
-  "/api/auth/desktop-callback",
   "/api/workos/webhook",
   "/callback",
-  "/desktop-login",
-  "/desktop-callback",
   "/auth-error",
   "/privacy-policy",
   "/terms-of-service",
@@ -70,11 +67,6 @@ function getRedirectUri(): string | undefined {
     return `https://${process.env.VERCEL_URL}/callback`;
   }
   return undefined;
-}
-
-function isDesktopApp(request: NextRequest): boolean {
-  const userAgent = request.headers.get("user-agent") || "";
-  return userAgent.includes("HackerAI-Desktop");
 }
 
 function isUnauthenticatedPath(pathname: string): boolean {
@@ -132,19 +124,6 @@ export default async function middleware(
   _event: NextFetchEvent,
 ) {
   const pathname = request.nextUrl.pathname;
-
-  if (isDesktopApp(request)) {
-    const hasSession = request.cookies.has("wos-session");
-
-    if (!hasSession && !isUnauthenticatedPath(pathname)) {
-      return withReferralCookie(
-        request,
-        NextResponse.redirect(
-          new URL("/desktop-callback?error=unauthenticated", request.url),
-        ),
-      );
-    }
-  }
 
   let refreshHitRateLimit = false;
   const hadSessionCookie = request.cookies.has("wos-session");

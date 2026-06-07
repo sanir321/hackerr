@@ -389,14 +389,12 @@ export default defineSchema({
     status: v.union(v.literal("connected"), v.literal("disconnected")),
     created_at: v.number(),
     // Set whenever status flips to "disconnected" so refresh-time errors can
-    // report the cause (presence sweep, token regen, desktop kick, etc.) and
-    // the lag between disconnect and the failed refresh attempt.
+    // report the cause (presence sweep, token regen, etc.) and the lag between
+    // disconnect and the failed refresh attempt.
     disconnected_at: v.optional(v.number()),
     disconnect_reason: v.optional(
       v.union(
         v.literal("client_disconnect"),
-        v.literal("desktop_disconnect"),
-        v.literal("desktop_kicked_by_new_session"),
         v.literal("token_regenerated"),
         v.literal("presence_sweep"),
       ),
@@ -529,7 +527,7 @@ export default defineSchema({
     .index("by_tier_day", ["tier", "day"])
     .index("by_source_event", ["source_event_id"]),
 
-  // Compact daily paid-start mix for dashboarding/PostHog warehouse sync.
+  // Compact daily paid-start mix for dashboarding.
   // Counts only; join to revenue_events only when explicitly analyzing money.
   paid_start_mix_daily: defineTable({
     day: v.string(),
@@ -558,7 +556,7 @@ export default defineSchema({
     .index("by_interval_day", ["billing_interval", "day"])
     .index("by_tier_interval_day", ["tier", "billing_interval", "day"]),
 
-  // Compact daily rows intended for dashboarding and PostHog warehouse sync.
+  // Compact daily rows intended for dashboarding.
   // Query either entity_type=user for per-user profitability or
   // entity_type=organization for team pool/subscription reporting.
   unit_economics_daily: defineTable({

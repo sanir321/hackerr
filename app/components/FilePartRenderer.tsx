@@ -16,7 +16,6 @@ import { AlertCircle, File, Download } from "lucide-react";
 import { FilePart, FilePartRendererProps } from "@/types/file";
 import { toast } from "sonner";
 import { useFileUrlCacheContext } from "../contexts/FileUrlCacheContext";
-import { isTauriEnvironment, openDownloadsFolder } from "../hooks/useTauri";
 
 const FilePartRendererComponent = ({
   part,
@@ -183,16 +182,6 @@ const FilePartRendererComponent = ({
       document.body.removeChild(link);
 
       URL.revokeObjectURL(blobUrl);
-
-      if (isTauriEnvironment()) {
-        toast.success(`Downloaded ${fileName}`, {
-          description: "Saved to Downloads folder",
-          action: {
-            label: "Show in folder",
-            onClick: () => openDownloadsFolder(),
-          },
-        });
-      }
     } catch (error) {
       console.error("Error downloading file:", error);
       toast.error("Failed to download file");
@@ -363,20 +352,6 @@ const FilePartRendererComponent = ({
       // Use the fetched URL or the URL from props
       const actualUrl = fileUrl || part.url;
 
-      if (part.storage === "local-desktop") {
-        return (
-          <FilePreviewCard
-            partId={partId}
-            icon={<File className="h-6 w-6 text-white" />}
-            fileName={part.name || part.filename || "Local file"}
-            subtitle="Local-only attachment"
-            url={undefined}
-            storageId={undefined}
-            fileId={undefined}
-          />
-        );
-      }
-
       if (!actualUrl && !part.storageId && !part.fileId) {
         // Error state for files without URLs or storage references
         return (
@@ -479,7 +454,6 @@ const FilePartRendererComponent = ({
       part.url ||
       part.storageId ||
       part.fileId ||
-      part.storage === "local-desktop" ||
       fileUrl
     ) {
       return <ConvexFilePart part={part} partId={partId} />;
@@ -541,7 +515,6 @@ export const FilePartRenderer = memo(
       prevProps.part.url === nextProps.part.url &&
       prevProps.part.storageId === nextProps.part.storageId &&
       prevProps.part.storage === nextProps.part.storage &&
-      prevProps.part.localAttachmentId === nextProps.part.localAttachmentId &&
       prevProps.part.fileId === nextProps.part.fileId &&
       prevProps.part.s3Key === nextProps.part.s3Key &&
       prevProps.part.name === nextProps.part.name &&

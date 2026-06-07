@@ -1,5 +1,4 @@
 import type { AnySandbox } from "@/types";
-import { createRetryLogger } from "@/lib/posthog/worker";
 import { isE2BSandbox } from "./sandbox-types";
 import { retryWithBackoff } from "./retry-with-backoff";
 import {
@@ -8,7 +7,7 @@ import {
   InvalidArgumentError,
 } from "./e2b-errors";
 
-const sandboxHealthLogger = createRetryLogger("sandbox-health");
+const sandboxHealthLogger = (...args: any[]) => {};
 
 const CPU_WARNING_THRESHOLD = 95; // percentage
 const MEM_WARNING_THRESHOLD = 90; // percentage

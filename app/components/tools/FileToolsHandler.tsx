@@ -6,18 +6,12 @@ import {
   FileText,
   FilePen,
   FileMinus,
-  FolderOpen,
 } from "lucide-react";
 import type { ChatStatus } from "@/types";
 import type { SidebarFile } from "@/types/chat";
 import { isSidebarFile } from "@/types/chat";
 import { useToolSidebar } from "../../hooks/useToolSidebar";
-import { isTauriEnvironment, revealFileInDir } from "@/app/hooks/useTauri";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+
 import { isUserStoppedToolError } from "@/lib/chat/tool-abort-utils";
 
 interface DiffDataPart {
@@ -29,24 +23,6 @@ interface DiffDataPart {
     modifiedContent: string;
   };
 }
-
-const OpenFileButton = ({ filePath }: { filePath: string }) => {
-  if (!isTauriEnvironment()) return null;
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          className="inline-flex items-center justify-center h-[36px] w-[36px] rounded-[15px] border border-border bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
-          onClick={() => revealFileInDir(filePath)}
-          aria-label="Reveal in Finder"
-        >
-          <FolderOpen className="h-4 w-4" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="top">Reveal in Finder</TooltipContent>
-    </Tooltip>
-  );
-};
 
 interface FileToolsHandlerProps {
   message: UIMessage;
@@ -261,7 +237,6 @@ export const FileToolsHandler = ({
               onClick={handleOpenInSidebar}
               onKeyDown={handleKeyDown}
             />
-            <OpenFileButton filePath={readInput.target_file} />
           </div>
         );
       }
@@ -333,7 +308,6 @@ export const FileToolsHandler = ({
               onClick={handleOpenInSidebar}
               onKeyDown={handleKeyDown}
             />
-            <OpenFileButton filePath={writeInput.file_path} />
           </div>
         );
       case "output-error":
@@ -456,7 +430,6 @@ export const FileToolsHandler = ({
               onClick={handleOpenInSidebar}
               onKeyDown={handleKeyDown}
             />
-            <OpenFileButton filePath={searchReplaceInput.file_path} />
           </div>
         );
       }
@@ -531,7 +504,6 @@ export const FileToolsHandler = ({
               }
               target={multiEditInput.file_path}
             />
-            <OpenFileButton filePath={multiEditInput.file_path} />
           </div>
         );
       }

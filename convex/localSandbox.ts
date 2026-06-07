@@ -262,111 +262,6 @@ export const disconnect = mutation({
   },
 });
 
-export const connectDesktop = mutation({
-  args: {
-    connectionName: v.string(),
-    osInfo: v.optional(
-      v.object({
-        platform: v.string(),
-        arch: v.string(),
-        release: v.string(),
-        hostname: v.string(),
-      }),
-    ),
-  },
-  returns: v.object({
-    connectionId: v.string(),
-  }),
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Unauthorized: User not authenticated",
-      });
-    }
-
-    const userId = identity.subject;
-
-    // Disconnect stale desktop connections for this user (page reload, etc.)
-    const existingDesktop = await ctx.db
-      .query("local_sandbox_connections")
-      .withIndex("by_user_and_status", (q) =>
-        q.eq("user_id", userId).eq("status", "connected"),
-      )
-      .collect();
-    const now = Date.now();
-    for (const conn of existingDesktop) {
-      if (conn.client_version === "desktop") {
-        await ctx.db.patch(conn._id, {
-          status: "disconnected",
-          disconnected_at: now,
-          disconnect_reason: "desktop_kicked_by_new_session",
-        });
-      }
-    }
-
-    const connectionId = crypto.randomUUID();
-
-    await ctx.db.insert("local_sandbox_connections", {
-      user_id: userId,
-      connection_id: connectionId,
-      connection_name: args.connectionName,
-      container_id: undefined,
-      client_version: "desktop",
-      mode: "dangerous",
-      os_info: args.osInfo,
-      capabilities: { commands: true, pty: true },
-      last_heartbeat: Date.now(),
-      status: "connected",
-      created_at: Date.now(),
-    });
-
-    return {
-      connectionId,
-    };
-  },
-});
-
-export const disconnectDesktop = mutation({
-  args: {
-    connectionId: v.string(),
-  },
-  returns: v.object({
-    success: v.boolean(),
-  }),
-  handler: async (ctx, { connectionId }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Unauthorized: User not authenticated",
-      });
-    }
-
-    const userId = identity.subject;
-
-    const connection = await ctx.db
-      .query("local_sandbox_connections")
-      .withIndex("by_connection_id", (q) => q.eq("connection_id", connectionId))
-      .first();
-
-    if (!connection || connection.user_id !== userId) {
-      return { success: false };
-    }
-
-    if (connection.status === "connected") {
-      await ctx.db.patch(connection._id, {
-        status: "disconnected",
-        disconnected_at: Date.now(),
-        disconnect_reason: "desktop_disconnect",
-      });
-    }
-
-    return { success: true };
-  },
-});
-
 export const disconnectByBackend = mutation({
   args: {
     serviceKey: v.string(),
@@ -410,7 +305,6 @@ export const listConnections = query({
         }),
       ),
       lastSeen: v.number(),
-      isDesktop: v.boolean(),
       capabilities: v.object({
         commands: v.boolean(),
         pty: v.boolean(),
@@ -437,7 +331,6 @@ export const listConnections = query({
       name: conn.connection_name,
       osInfo: conn.os_info,
       lastSeen: conn.last_heartbeat,
-      isDesktop: conn.client_version === "desktop",
       capabilities: conn.capabilities ?? { commands: true, pty: true },
     }));
   },
@@ -461,7 +354,6 @@ export const listConnectionsForBackend = query({
         }),
       ),
       lastSeen: v.number(),
-      isDesktop: v.boolean(),
       capabilities: v.object({
         commands: v.boolean(),
         pty: v.boolean(),
@@ -483,7 +375,6 @@ export const listConnectionsForBackend = query({
       name: conn.connection_name,
       osInfo: conn.os_info,
       lastSeen: conn.last_heartbeat,
-      isDesktop: conn.client_version === "desktop",
       capabilities: conn.capabilities ?? { commands: true, pty: true },
     }));
   },

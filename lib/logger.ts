@@ -117,7 +117,7 @@ export interface ChatWideEvent {
 
   // Sandbox execution
   sandbox?: {
-    type: "e2b" | "desktop" | "remote-connection";
+    type: "e2b" | "remote-connection";
     name?: string;
   };
 

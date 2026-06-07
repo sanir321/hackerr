@@ -138,11 +138,8 @@ describe("agent-long task — Trigger.dev dashboard error visibility", () => {
     expect(routeSrc).toMatch(/loginRequired:\s*false/);
   });
 
-  test("persisted chats send a trimmed Trigger payload and retain attachment exceptions", () => {
-    expect(routeSrc).toMatch(
-      /const messagesForPayload\s*=\s*temporary\s*\|\|\s*localDesktopAttachmentsPrepared\s*\?\s*messagesForTrigger\s*:\s*\[\]/s,
-    );
-    expect(routeSrc).toMatch(/messages:\s*messagesForPayload/);
+  test("persisted chats send an empty messages payload to the trigger task", () => {
+    expect(routeSrc).toMatch(/messages:\s*temporary\s*\?\s*requestMessages\s*:\s*\[\]/);
   });
 
   test("public token creation and active run persistence are overlapped", () => {

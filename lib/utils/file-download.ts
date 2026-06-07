@@ -1,9 +1,4 @@
 import { toast } from "sonner";
-import {
-  isTauriEnvironment,
-  revealFileInDir,
-  saveFileToLocal,
-} from "@/app/hooks/useTauri";
 
 /**
  * Options for file download/save operations.
@@ -18,34 +13,17 @@ interface DownloadFileOptions {
 }
 
 /**
- * Unified file download handler that works across Tauri desktop and web browsers.
+ * Unified file download handler for web browsers.
  *
  * Strategy:
- * 1. Tauri: save via command server (anchor downloads don't work in WebView)
- * 2. File System Access API: native save dialog (Chrome/Edge)
- * 3. Blob download: traditional anchor element fallback
+ * 1. File System Access API: native save dialog (Chrome/Edge)
+ * 2. Blob download: traditional anchor element fallback
  */
 export async function downloadFile({
   filename,
   content,
   mimeType = "text/plain",
 }: DownloadFileOptions): Promise<void> {
-  // Tauri: save via command server
-  if (isTauriEnvironment()) {
-    const filePath = await saveFileToLocal(filename, content);
-    if (filePath) {
-      toast.success(`Saved ${filename}`, {
-        action: {
-          label: "Show in Finder",
-          onClick: () => revealFileInDir(filePath),
-        },
-      });
-    } else {
-      toast.error("Failed to save file");
-    }
-    return;
-  }
-
   // File System Access API (native save dialog)
   try {
     if ("showSaveFilePicker" in window) {

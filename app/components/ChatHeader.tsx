@@ -20,7 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ShareDialog } from "./ShareDialog";
-import { navigateToAuth } from "@/app/hooks/useTauri";
+
 
 interface ChatHeaderProps {
   hasMessages: boolean;
@@ -134,7 +134,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                 {!loading && !user && (
                   <>
                     <Button
-                      onClick={() => navigateToAuth("/login")}
+                      onClick={() => window.location.href = "/login"}
                       variant="default"
                       size="default"
                       className="min-w-[74px] rounded-[10px]"
@@ -142,7 +142,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                       Sign in
                     </Button>
                     <Button
-                      onClick={() => navigateToAuth("/signup")}
+                      onClick={() => window.location.href = "/signup"}
                       variant="outline"
                       size="default"
                       className="min-w-16 rounded-[10px]"
@@ -203,7 +203,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
               {!loading && !user && (
                 <>
                   <Button
-                    onClick={() => navigateToAuth("/login")}
+                    onClick={() => window.location.href = "/login"}
                     variant="default"
                     size="sm"
                     className="rounded-[10px]"
@@ -211,7 +211,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                     Sign in
                   </Button>
                   <Button
-                    onClick={() => navigateToAuth("/signup")}
+                    onClick={() => window.location.href = "/signup"}
                     variant="outline"
                     size="sm"
                     className="rounded-[10px]"

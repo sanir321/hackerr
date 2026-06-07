@@ -13,7 +13,6 @@ import {
 } from "ai";
 import type { Geo } from "@vercel/functions";
 import { countTokens } from "gpt-tokenizer";
-import PostHogClient from "@/app/posthog";
 
 import { systemPrompt } from "@/lib/system-prompt";
 import { getResumeSection } from "@/lib/system-prompt/resume";
@@ -73,13 +72,10 @@ import {
 } from "@/lib/utils/sandbox-file-utils";
 import { getEmptyProcessedMessagesCause } from "@/lib/utils/local-attachment-messages";
 import {
-  captureAgentCompletionAnalytics,
-  captureToolCalls,
-  captureUsageCost,
   createChatLogger,
   type ChatLogger,
 } from "@/lib/api/chat-logger";
-import { phLogger } from "@/lib/posthog/server";
+
 import {
   extractErrorDetails,
   getProviderErrorCategory,
@@ -519,7 +515,6 @@ export type AgentLongPayload = {
   subscription: SubscriptionTier;
   organizationId?: string;
   messages: UIMessage[];
-  localDesktopAttachmentsPrepared?: boolean;
   baseTodos: Todo[];
   sandboxPreference?: SandboxPreference;
   selectedModel?: SelectedModel;
@@ -562,7 +557,6 @@ export const agentLongTask = task({
       await cleanup.usageRefundTracker.refund().catch(() => {});
     }
     await ptySessionManager.closeAll(cleanup.chatId).catch(() => {});
-    await phLogger.flush().catch(() => {});
     runCleanupMap.delete(ctx.run.id);
   },
 
@@ -580,7 +574,6 @@ export const agentLongTask = task({
       subscription,
       organizationId,
       messages,
-      localDesktopAttachmentsPrepared,
       sandboxPreference,
       selectedModel: selectedModelOverride,
       userLocation,
@@ -685,7 +678,7 @@ export const agentLongTask = task({
 
       const uploadBasePath = getUploadBasePath();
       const messagesForProcessing =
-        localDesktopAttachmentsPrepared && messages.length > 0
+        messages.length > 0
           ? messages
           : truncatedMessages.length
             ? truncatedMessages
@@ -700,7 +693,6 @@ export const agentLongTask = task({
           subscription,
           uploadBasePath,
           modelOverride: selectedModelOverride,
-          allowLocalDesktopFiles: false,
         });
 
       if (!processedMessages.length) {
@@ -734,7 +726,6 @@ export const agentLongTask = task({
         selectedModel,
       );
 
-      const posthog = PostHogClient();
       chatLogger.getBuilder().setAssistantId(assistantMessageId);
 
       // Wire trigger.dev's abort signal into a local controller.
@@ -894,7 +885,7 @@ export const agentLongTask = task({
             if (sandboxFiles && sandboxFiles.length > 0) {
               writeUploadStartStatus(
                 writer,
-                sandboxFiles.every((file) => file.kind === "localPath")
+                false
                   ? "Preparing local attachments on your computer"
                   : "Uploading attachments to the computer",
               );
@@ -1080,16 +1071,7 @@ export const agentLongTask = task({
                     rateLimitInfo,
                   });
                 }
-                captureUsageCost({
-                  posthog,
-                  userId,
-                  subscription,
-                  organizationId,
-                  chatId,
-                  endpoint: "/api/agent-long",
-                  mode,
-                  usage: usageCostRecord,
-                });
+
               } finally {
                 await releaseFreeRunLockOnce();
               }
@@ -1143,22 +1125,6 @@ export const agentLongTask = task({
                 !isRetryWithFallback &&
                 isAutoModel
               ) {
-                phLogger.error(
-                  "[agent-long] Provider API error, retrying with fallback",
-                  {
-                    error,
-                    chatId,
-                    originalModel: selectedModel,
-                    requestedModelSlug: configuredModelId,
-                    fallbackModel,
-                    fallbackModelSlug: fallbackModelId,
-                    userId,
-                    subscription,
-                    preFallbackCacheReadTokens: usageTracker.cacheReadTokens,
-                    preFallbackCacheWriteTokens: usageTracker.cacheWriteTokens,
-                    ...extractErrorDetails(error),
-                  },
-                );
                 isRetryWithFallback = true;
                 state.lastStepInputTokens = 0;
                 state.stoppedDueToTokenExhaustion = false;
@@ -1284,28 +1250,13 @@ export const agentLongTask = task({
                                     cacheReadTokens: fallbackCacheRead,
                                     cacheWriteTokens: fallbackCacheWrite,
                                   });
-                                  captureToolCalls({
-                                    posthog,
-                                    chatLogger,
-                                    userId,
-                                    mode,
-                                  });
+
                                   const outcome = retryAborted
                                     ? "aborted"
                                     : isTerminalProviderStreamError(state)
                                       ? "error"
                                       : "success";
-                                  captureAgentCompletionAnalytics({
-                                    posthog,
-                                    userId,
-                                    chatId,
-                                    endpoint: "/api/agent-long",
-                                    mode,
-                                    subscription,
-                                    sandboxInfo,
-                                    outcome,
-                                    chatLogger,
-                                  });
+
                                   if (!isTerminalProviderStreamError(state)) {
                                     chatLogger?.emitSuccess({
                                       finishReason: state.streamFinishReason,
@@ -1383,7 +1334,6 @@ export const agentLongTask = task({
                                     sendFileMetadataToStream(accumulatedFiles);
                                   }
                                   await deductAccumulatedUsage();
-                                  posthog?.shutdown();
                                 } finally {
                                   await releaseFreeRunLockOnce();
                                 }
@@ -1414,23 +1364,13 @@ export const agentLongTask = task({
                         cacheReadTokens: usageTracker.cacheReadTokens,
                         cacheWriteTokens: usageTracker.cacheWriteTokens,
                       });
-                      captureToolCalls({ posthog, chatLogger, userId, mode });
+
                       const outcome = isAborted
                         ? "aborted"
                         : isTerminalProviderStreamError(state)
                           ? "error"
                           : "success";
-                      captureAgentCompletionAnalytics({
-                        posthog,
-                        userId,
-                        chatId,
-                        endpoint: "/api/agent-long",
-                        mode,
-                        subscription,
-                        sandboxInfo,
-                        outcome,
-                        chatLogger,
-                      });
+
                       if (!isTerminalProviderStreamError(state)) {
                         chatLogger?.emitSuccess({
                           finishReason: state.streamFinishReason,
@@ -1548,7 +1488,6 @@ export const agentLongTask = task({
                             }),
                           );
                           await deductAccumulatedUsage();
-                          posthog?.shutdown();
                           return;
                         }
 
@@ -1630,7 +1569,6 @@ export const agentLongTask = task({
                       }
 
                       await deductAccumulatedUsage();
-                      posthog?.shutdown();
                     } finally {
                       if (!retryScheduled) {
                         await releaseFreeRunLockOnce();
@@ -1676,14 +1614,12 @@ export const agentLongTask = task({
           });
           await usageRefundTracker.refund().catch(() => {});
           chatLogger?.emitChatError(terminalStreamError);
-          await phLogger.flush().catch(() => {});
           return { chatId, assistantMessageId };
         }
         throw terminalStreamError;
       }
 
       metadata.set("status", "done");
-      await phLogger.flush().catch(() => {});
     } catch (error) {
       await releaseFreeRunLockOnce();
       const chatMissingAfterStream =
@@ -1717,7 +1653,6 @@ export const agentLongTask = task({
         );
 
       if (chatMissingAfterStream) {
-        await phLogger.flush().catch(() => {});
         return { chatId, assistantMessageId };
       }
 
@@ -1750,7 +1685,6 @@ export const agentLongTask = task({
         }
       }
 
-      await phLogger.flush().catch(() => {});
       throw error;
     } finally {
       runCleanupMap.delete(ctx.run.id);

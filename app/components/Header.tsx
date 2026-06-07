@@ -5,7 +5,7 @@ import Link from "next/link";
 import { UmbraaSVG } from "@/components/icons/umbraa-svg";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
-import { navigateToAuth } from "@/app/hooks/useTauri";
+
 import { Download } from "lucide-react";
 
 interface HeaderProps {
@@ -52,7 +52,7 @@ const Header: React.FC<HeaderProps> = ({ chatTitle, hideDownload = false }) => {
               )}
               <Button
                 data-testid="sign-in-button"
-                onClick={() => navigateToAuth("/login")}
+                onClick={() => window.location.href = "/login"}
                 variant="default"
                 size="default"
                 className="min-w-[74px] rounded-[10px]"
@@ -62,9 +62,7 @@ const Header: React.FC<HeaderProps> = ({ chatTitle, hideDownload = false }) => {
               <Button
                 data-testid="sign-up-button"
                 onClick={() =>
-                  navigateToAuth("/signup", {
-                    preferSignInForReturningUser: true,
-                  })
+                  window.location.href = "/signup"
                 }
                 variant="outline"
                 size="default"
@@ -91,7 +89,7 @@ const Header: React.FC<HeaderProps> = ({ chatTitle, hideDownload = false }) => {
           <div className="flex items-center gap-2">
             <Button
               data-testid="sign-in-button-mobile"
-              onClick={() => navigateToAuth("/login")}
+              onClick={() => window.location.href = "/login"}
               variant="default"
               size="sm"
               className="rounded-[10px]"
@@ -101,9 +99,7 @@ const Header: React.FC<HeaderProps> = ({ chatTitle, hideDownload = false }) => {
             <Button
               data-testid="sign-up-button-mobile"
               onClick={() =>
-                navigateToAuth("/signup", {
-                  preferSignInForReturningUser: true,
-                })
+                window.location.href = "/signup"
               }
               variant="outline"
               size="sm"

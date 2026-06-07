@@ -12,10 +12,9 @@ import {
   UploadedFileState,
   FileUploadPreviewProps,
   FilePreview,
-  LocalDesktopFile,
 } from "@/types/file";
 
-const isBrowserFile = (file: File | LocalDesktopFile): file is File =>
+const isBrowserFile = (file: File): file is File =>
   typeof globalThis.File !== "undefined" && file instanceof globalThis.File;
 
 export const FileUploadPreview = ({
@@ -214,7 +213,7 @@ export const FileUploadPreview = ({
                             >
                               {filePreview.error
                                 ? "Upload failed"
-                                : `${uploadedFiles[index]?.storage === "local-desktop" ? "Local file" : "Document"} • ${formatFileSize(filePreview.file.size)}`}
+                                : `Document • ${formatFileSize(filePreview.file.size)}`}
                             </div>
                           </div>
                         </div>

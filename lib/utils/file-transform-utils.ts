@@ -442,14 +442,11 @@ const applyModeSpecificTransforms = async (
   sandboxFiles: SandboxFile[],
   uploadBasePath?: string,
   maxFileTokens?: number,
-  allowLocalDesktopFiles?: boolean,
 ) => {
   const fileIds = extractAllFileIdsFromMessages(messages);
 
   if (mode === "agent") {
-    collectSandboxFiles(messages, sandboxFiles, uploadBasePath, {
-      allowLocalDesktopFiles,
-    });
+    collectSandboxFiles(messages, sandboxFiles, uploadBasePath);
     removeNonMediaAndOversizedImageFileParts(messages);
   } else {
     const nonMediaFileIds = filterNonMediaFileIds(messages, fileIds);
@@ -495,7 +492,6 @@ export const processMessageFiles = async (
   userId: string,
   uploadBasePath?: string,
   subscription?: SubscriptionTier,
-  allowLocalDesktopFiles: boolean = false,
 ): Promise<{
   messages: UIMessage[];
   hasMediaFiles: boolean;
@@ -535,7 +531,6 @@ export const processMessageFiles = async (
     sandboxFiles,
     uploadBasePath,
     maxFileTokens,
-    allowLocalDesktopFiles,
   );
 
   return {

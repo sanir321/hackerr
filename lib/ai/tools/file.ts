@@ -8,7 +8,6 @@ import { isE2BSandbox } from "./utils/sandbox-types";
 import { uploadSandboxFileToConvex } from "./utils/sandbox-file-uploader";
 import type { Id } from "@/convex/_generated/dataModel";
 import { logger } from "@/lib/logger";
-import { phLogger } from "@/lib/posthog/server";
 
 const MAX_VIEW_FILE_BYTES = 10 * 1024 * 1024;
 const FILE_ACTIONS_WITH_VIEW = [
@@ -188,7 +187,7 @@ function captureFileViewImageUsage(args: {
     failureReason,
   } = args;
 
-  phLogger.event("file_view_image_used", {
+  console.log("file_view_image_used", {
     userId: context.userID,
     user_id: context.userID,
     chat_id: context.chatId,

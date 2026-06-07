@@ -9,8 +9,6 @@ import {
   createCancellationSubscriber,
   createPreemptiveTimeout,
 } from "@/lib/utils/stream-cancellation";
-import { phLogger } from "@/lib/posthog/server";
-
 export const maxDuration = 800;
 
 export async function GET(
@@ -183,18 +181,6 @@ export async function GET(
               }
             } catch (error) {
               const isPreemptive = preemptiveTimeout.isPreemptive();
-              const triggerTime = preemptiveTimeout.getTriggerTime();
-              const cleanupStart = Date.now();
-
-              if (isPreemptive) {
-                phLogger.info("Stream route preemptive abort caught", {
-                  userId,
-                  chatId,
-                  timeSinceTriggerMs: triggerTime
-                    ? cleanupStart - triggerTime
-                    : null,
-                });
-              }
 
               preemptiveTimeout.clear();
 
@@ -202,14 +188,6 @@ export async function GET(
                 error instanceof DOMException &&
                 error.name === "AbortError"
               ) {
-                if (isPreemptive) {
-                  phLogger.info("Stream route closing controller after abort", {
-                    userId,
-                    chatId,
-                    cleanupDurationMs: Date.now() - cleanupStart,
-                  });
-                  await phLogger.flush();
-                }
                 controller.close();
               } else {
                 controller.error(error);
@@ -217,17 +195,9 @@ export async function GET(
             }
           },
           async cancel() {
-            const isPreemptive = preemptiveTimeout.isPreemptive();
-            if (isPreemptive) {
-              phLogger.info("Stream route cancel called", { userId, chatId });
-            }
             preemptiveTimeout.clear();
             reader.cancel();
             cancellationSubscriber.stop();
-            if (isPreemptive) {
-              // Await so the serverless runtime doesn't tear down before flush.
-              await phLogger.flush();
-            }
           },
         });
 

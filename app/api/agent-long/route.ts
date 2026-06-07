@@ -15,13 +15,9 @@ import { assertFreeAgentGates } from "@/lib/api/chat-stream-helpers";
 import { coerceSelectedModel } from "@/types";
 import { ChatSDKError } from "@/lib/errors";
 import type { Todo, SandboxPreference, SelectedModel } from "@/types";
-import { HybridSandboxManager } from "@/lib/ai/tools/utils/hybrid-sandbox-manager";
 import {
   getUploadBasePath,
-  hasLocalDesktopSourcePaths,
-  prepareLocalDesktopAttachmentsForTrigger,
   rewriteSandboxFilePathsInMessages,
-  stripLocalDesktopSourcePaths,
   uploadSandboxFiles,
 } from "@/lib/utils/sandbox-file-utils";
 
@@ -95,57 +91,11 @@ export async function POST(req: NextRequest) {
     const isNewChat =
       !temporary && !existingChat && !regenerate && !isAutoContinue;
 
-    let messagesForPersistence = stripLocalDesktopSourcePaths(requestMessages);
-    let messagesForTrigger = messagesForPersistence;
-    let localDesktopAttachmentsPrepared = false;
-
-    if (hasLocalDesktopSourcePaths(requestMessages)) {
-      let { messages: preparedMessages, sandboxFiles } =
-        prepareLocalDesktopAttachmentsForTrigger(
-          requestMessages,
-        );
-      if (sandboxFiles.length > 0) {
-        const sandboxManager = new HybridSandboxManager(
-          userId,
-          () => {},
-          "e2b",
-          process.env.CONVEX_SERVICE_ROLE_KEY!,
-          null,
-          subscription,
-        );
-        let stagedSandbox: any = null;
-        let uploadResult: Awaited<ReturnType<typeof uploadSandboxFiles>>;
-        try {
-          uploadResult = await uploadSandboxFiles(sandboxFiles, async () => {
-            const { sandbox } = await sandboxManager.getSandbox();
-            stagedSandbox = sandbox;
-            return sandbox;
-          });
-        } finally {
-          await stagedSandbox?.close?.().catch(() => {});
-        }
-        if (uploadResult.failedCount > 0) {
-          const noun =
-            uploadResult.failedCount === 1 ? "attachment" : "attachments";
-          throw new ChatSDKError(
-            "bad_request:api",
-            `Failed to prepare ${uploadResult.failedCount} local ${noun}. Please reattach and try again.`,
-          );
-        }
-        preparedMessages = rewriteSandboxFilePathsInMessages(
-          preparedMessages,
-          uploadResult.pathRewrites,
-        );
-      }
-      messagesForTrigger = preparedMessages;
-      localDesktopAttachmentsPrepared = true;
-    }
-
     if (!temporary) {
       await handleInitialChatAndUserMessage({
         chatId,
         userId,
-        messages: messagesForPersistence,
+        messages: requestMessages,
         regenerate,
         chat: existingChat ?? null,
         isHidden: isAutoContinue ? true : undefined,
@@ -155,13 +105,6 @@ export async function POST(req: NextRequest) {
     const triggerTags = [`user_${userId}`, `chat_${chatId}`];
     if (subscription !== "free") triggerTags.push(`sub_${subscription}`);
 
-    // Persisted chats are rehydrated from Convex inside the task after the
-    // route saves the latest user message. Avoid sending the same history
-    // through Trigger unless the task cannot rehydrate it, or the route has
-    // prepared desktop-local attachment tags that only exist in this payload.
-    const messagesForPayload =
-      temporary || localDesktopAttachmentsPrepared ? messagesForTrigger : [];
-
     const triggerRequestedAt = Date.now();
     const handle = await tasks.trigger<typeof agentLongTask>(
       "agent-long",
@@ -170,8 +113,7 @@ export async function POST(req: NextRequest) {
         userId,
         subscription,
         organizationId,
-        messages: messagesForPayload,
-        localDesktopAttachmentsPrepared,
+        messages: temporary ? requestMessages : [],
         baseTodos: Array.isArray(todos) ? todos : [],
         sandboxPreference,
         selectedModel: selectedModelOverride,
@@ -196,7 +138,7 @@ export async function POST(req: NextRequest) {
           loginRequired: false,
           routeStartedAt,
           triggerRequestedAt,
-          triggerPayloadMessageCount: messagesForPayload.length,
+          triggerPayloadMessageCount: temporary ? requestMessages.length : 0,
         },
       },
     );
@@ -223,10 +165,8 @@ export async function POST(req: NextRequest) {
       runId: handle.id,
       routeDurationMs: Date.now() - routeStartedAt,
       triggerDurationMs: triggerCompletedAt - triggerRequestedAt,
-      triggerPayloadMessageCount: messagesForPayload.length,
-      persistedMessageCount: messagesForPersistence.length,
+      triggerPayloadMessageCount: temporary ? requestMessages.length : 0,
       temporary: !!temporary,
-      localDesktopAttachmentsPrepared,
     });
 
     return NextResponse.json({

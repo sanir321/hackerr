@@ -3,7 +3,6 @@
  *
  * Executes Caido GraphQL queries by running curl on the sandbox, so the
  * requests originate on the remote machine where Caido is actually listening.
- * This works identically for desktop and remote-connection sandboxes.
  */
 
 import type { CaidoErrorKind, CaidoReadyInfo, ToolContext } from "@/types";

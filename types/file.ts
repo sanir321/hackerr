@@ -6,33 +6,18 @@ export interface FileMessagePart {
   fileId?: string; // Database file ID for backend operations
   name: string;
   size: number;
-  storage?: "s3" | "local-desktop";
-  localAttachmentId?: string;
-  /**
-   * Transient source path for desktop-local agent attachments.
-   * Must never be persisted to Convex or long-lived task payloads.
-   */
-  localPath?: string;
+  storage?: "s3";
   // DON'T store URL in message parts - S3 URLs expire!
   // URLs are generated on-demand via fileId
   // url: string;
 }
 
-export interface LocalDesktopFile {
-  name: string;
-  type: string;
-  size: number;
-  lastModified: number;
-}
-
 export interface UploadedFileState {
-  file: File | LocalDesktopFile;
+  file: File;
   uploading: boolean;
   uploaded: boolean;
   error?: string;
-  storage?: "s3" | "local-desktop";
-  localAttachmentId?: string;
-  localPath?: string;
+  storage?: "s3";
   fileId?: string; // Database file ID for backend operations
   url?: string; // Store the resolved URL
   tokens?: number; // Token count for the file
@@ -45,8 +30,7 @@ export interface FilePart {
   name?: string;
   filename?: string;
   mediaType?: string;
-  storage?: "s3" | "local-desktop";
-  localAttachmentId?: string;
+  storage?: "s3";
   storageId?: string; // Storage ID for on-demand URL fetching (Convex files)
   s3Key?: string; // S3 key for on-demand URL fetching (S3 files)
 }
@@ -66,7 +50,7 @@ export interface FileUploadPreviewProps {
 }
 
 export interface FilePreview {
-  file: File | LocalDesktopFile;
+  file: File;
   preview?: string;
   loading: boolean;
   uploading: boolean;

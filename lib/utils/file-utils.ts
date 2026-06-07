@@ -1,6 +1,5 @@
 import {
   FileMessagePart,
-  LocalDesktopFile,
   UploadedFileState,
 } from "@/types/file";
 import type { ChatMode } from "@/types/chat";
@@ -52,7 +51,7 @@ export function getMaxFilesLimitForMode(mode: ChatMode): number {
 /**
  * Check if file is an image
  */
-export function isImageFile(file: File | LocalDesktopFile): boolean {
+export function isImageFile(file: File): boolean {
   return file.type.startsWith("image/");
 }
 
@@ -60,7 +59,7 @@ export function isImageFile(file: File | LocalDesktopFile): boolean {
  * Validate file for upload
  */
 export function validateFile(
-  file: File | LocalDesktopFile,
+  file: File,
   options: { mode?: ChatMode } = {},
 ): {
   valid: boolean;
@@ -130,22 +129,6 @@ export function createFileMessagePartFromUploadedFile(
 ): FileMessagePart | null {
   if (!uploadedFile.uploaded) {
     return null;
-  }
-
-  if (uploadedFile.storage === "local-desktop") {
-    if (!uploadedFile.localAttachmentId || !uploadedFile.localPath) {
-      return null;
-    }
-
-    return {
-      type: "file" as const,
-      mediaType: uploadedFile.file.type || "application/octet-stream",
-      name: uploadedFile.file.name,
-      size: uploadedFile.file.size,
-      storage: "local-desktop",
-      localAttachmentId: uploadedFile.localAttachmentId,
-      localPath: uploadedFile.localPath,
-    };
   }
 
   if (!uploadedFile.fileId) {

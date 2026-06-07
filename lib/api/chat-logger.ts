@@ -15,14 +15,9 @@ import type {
   CaidoReadyInfo,
   ChatMode,
   ExtraUsageConfig,
-  SandboxInfo,
   SandboxBootInfo,
 } from "@/types";
 import type { ChatSDKError } from "@/lib/errors";
-import type { PostHog } from "posthog-node";
-import { after } from "next/server";
-import { phLogger } from "@/lib/posthog/server";
-import type { UsageCostRecord } from "@/lib/usage-tracker";
 import type { OpenRouterModelMetadata } from "@/lib/api/openrouter-metadata";
 import {
   extractErrorDetails,
@@ -71,18 +66,6 @@ export interface StreamResult {
   wasAborted: boolean;
   wasPreemptiveTimeout: boolean;
   hadSummarization: boolean;
-}
-
-function posthogProviderException(
-  error: unknown,
-  details: Record<string, unknown>,
-): Error {
-  if (error instanceof Error) return error;
-  const message =
-    typeof details.errorMessage === "string" && details.errorMessage.length > 0
-      ? details.errorMessage
-      : "Provider streaming error";
-  return new Error(message);
 }
 
 const truncateLogString = (value: string, maxLength = 500): string =>
@@ -289,17 +272,6 @@ export function createChatLogger(config: ChatLoggerConfig) {
       model: string;
     }) {
       builder.recordAnthropicPromptRepair(repair);
-      phLogger.event("anthropic_prompt_repaired", {
-        userId,
-        chat_id: config.chatId,
-        endpoint: config.endpoint,
-        mode,
-        subscription,
-        model: repair.model,
-        action: repair.action,
-        reason: repair.reason,
-        trailing_assistant_content_types: repair.trailingAssistantContentTypes,
-      });
     },
 
     /**
@@ -314,17 +286,6 @@ export function createChatLogger(config: ChatLoggerConfig) {
       builder.recordModelFallback({
         served: fallback.served,
         chain: fallback.chain,
-      });
-      phLogger.event("model_fallback_served", {
-        userId,
-        chat_id: config.chatId,
-        endpoint: config.endpoint,
-        mode,
-        subscription,
-        configured_model: fallback.model,
-        requested_model: fallback.requested,
-        served_model: fallback.served,
-        fallback_chain: fallback.chain,
       });
     },
 
@@ -386,24 +347,7 @@ export function createChatLogger(config: ChatLoggerConfig) {
         );
       }
 
-      const phContext = {
-        event: providerErrorEventName(category),
-        chatId: config.chatId,
-        endpoint: config.endpoint,
-        providerErrorCategory: category,
-        ...context,
-        ...details,
-        ...(attempts && { provider_attempts: attempts }),
-      };
 
-      if (category === "stream_terminated" || category === "timeout") {
-        phLogger.warn(providerErrorMessage(category), phContext);
-      } else {
-        phLogger.error(providerErrorMessage(category), {
-          error: posthogProviderException(error, details),
-          ...phContext,
-        });
-      }
 
       builder.markProviderError({
         category,
@@ -448,31 +392,6 @@ export function createChatLogger(config: ChatLoggerConfig) {
         metadata: compactChatErrorMetadata(error.metadata),
       });
       logger.info(builder.build());
-
-      // Fire a discrete PostHog event when a paid user is blocked at the
-      // monthly cap. Used to size the cap-hit cohort and correlate against
-      // subscription_changed / subscription_cancelled events.
-      if (
-        error.type === "rate_limit" &&
-        subscription &&
-        subscription !== "free"
-      ) {
-        const capReason =
-          (error.metadata?.capReason as string | undefined) ?? "unknown";
-        phLogger.event("monthly_cap_hit", {
-          userId,
-          subscription,
-          mode,
-          cap_reason: capReason,
-          monthly_remaining_percent: monthlyRemainingPercent,
-          chat_id: config.chatId,
-          endpoint: config.endpoint,
-          $set: {
-            subscription_tier: subscription,
-            last_cap_hit_at: new Date().toISOString(),
-          },
-        });
-      }
     },
 
     /**
@@ -538,214 +457,14 @@ export type ChatLogger = ReturnType<typeof createChatLogger>;
  * One event is emitted per tool to keep analytics useful while
  * avoiding the cost of one PostHog event per individual tool call.
  */
-export function captureToolCalls({
-  posthog,
-  chatLogger,
-  userId,
-  mode,
-}: {
-  posthog: PostHog | null;
-  chatLogger: ChatLogger | undefined;
-  userId: string;
-  mode: ChatMode;
-}) {
-  if (!posthog || !chatLogger) return;
-  const toolCalls = chatLogger.getToolCalls();
-  if (toolCalls.length === 0) return;
-
-  const aggregatedToolCalls = new Map<
-    string,
-    { name: string; count: number }
-  >();
-
-  for (const tool of toolCalls) {
-    const existing = aggregatedToolCalls.get(tool.name);
-    if (existing) {
-      existing.count += 1;
-      continue;
-    }
-    aggregatedToolCalls.set(tool.name, { name: tool.name, count: 1 });
-  }
-
-  for (const tool of aggregatedToolCalls.values()) {
-    posthog.capture({
-      distinctId: userId,
-      event: "umbraa-tool_usage",
-      properties: {
-        mode,
-        toolName: tool.name,
-        count: tool.count,
-        toolCallCount: tool.count,
-      },
-    });
-  }
+export function captureToolCalls() {
 }
 
-export type AgentRunOutcome = "success" | "aborted" | "error";
-
-type AgentCompletionAnalyticsArgs = {
-  posthog: PostHog | null;
-  userId: string;
-  chatId: string;
-  endpoint: "/api/chat" | "/api/agent-long";
-  mode: ChatMode;
-  subscription: string;
-  sandboxInfo: SandboxInfo | null;
-  outcome: AgentRunOutcome;
-  chatLogger: ChatLogger | undefined;
-};
-
-export function captureAgentRun({
-  posthog,
-  userId,
-  mode,
-  subscription,
-  sandboxInfo,
-  outcome,
-}: {
-  posthog: PostHog | null;
-  userId: string;
-  mode: ChatMode;
-  subscription: string;
-  sandboxInfo: SandboxInfo | null;
-  outcome: AgentRunOutcome;
-}) {
-  if (!posthog || mode !== "agent") return;
-  posthog.capture({
-    distinctId: userId,
-    event: "umbraa-agent_run",
-    properties: {
-      mode,
-      subscription,
-      outcome,
-      ...(sandboxInfo?.type && { sandboxType: sandboxInfo.type }),
-    },
-  });
+export function captureAgentCompletionAnalytics() {
 }
 
-export function captureFreeAgentValueReached({
-  posthog,
-  userId,
-  chatId,
-  endpoint,
-  mode,
-  subscription,
-  sandboxInfo,
-  outcome,
-  chatLogger,
-}: {
-  posthog: PostHog | null;
-  userId: string;
-  chatId: string;
-  endpoint: "/api/chat" | "/api/agent-long";
-  mode: ChatMode;
-  subscription: string;
-  sandboxInfo: SandboxInfo | null;
-  outcome: AgentRunOutcome;
-  chatLogger: ChatLogger | undefined;
-}) {
-  if (!posthog || mode !== "agent" || subscription !== "free") return;
-  if (outcome !== "success") return;
-
-  const now = new Date().toISOString();
-  const toolCallCount = chatLogger?.getToolCalls().length ?? 0;
-
-  posthog.capture({
-    distinctId: userId,
-    event: "umbraa-free_agent_value_reached",
-    properties: {
-      user_id: userId,
-      chat_id: chatId,
-      endpoint,
-      mode,
-      subscription,
-      subscription_tier: subscription,
-      outcome,
-      tool_call_count: toolCallCount,
-      agent_value_event_version: 1,
-      ...(sandboxInfo?.type && { sandbox_type: sandboxInfo.type }),
-      $set_once: {
-        first_free_agent_value_reached_at: now,
-      },
-      $set: {
-        subscription_tier: subscription,
-        last_free_agent_value_reached_at: now,
-      },
-    },
-  });
+export function captureUsageCost() {
 }
 
-export function captureAgentCompletionAnalytics(
-  args: AgentCompletionAnalyticsArgs,
-) {
-  const { posthog, userId, mode, subscription, sandboxInfo, outcome } = args;
-  captureAgentRun({
-    posthog,
-    userId,
-    mode,
-    subscription,
-    sandboxInfo,
-    outcome,
-  });
-  captureFreeAgentValueReached(args);
-}
-
-/**
- * Capture one cost event per request with usage. In PostHog, answer
- * "how much does each user cost you?" by summing cost_dollars on
- * umbraa-usage_cost grouped by distinct_id (or user_id).
- */
-export function captureUsageCost({
-  posthog,
-  userId,
-  subscription,
-  organizationId,
-  chatId,
-  endpoint,
-  mode,
-  usage,
-}: {
-  posthog: PostHog | null;
-  userId: string;
-  subscription: string;
-  organizationId?: string;
-  chatId: string;
-  endpoint: "/api/chat" | "/api/agent-long";
-  mode: ChatMode;
-  usage: UsageCostRecord;
-}) {
-  if (!posthog) return;
-  posthog.capture({
-    distinctId: userId,
-    event: "umbraa-usage_cost",
-    properties: {
-      user_id: userId,
-      subscription,
-      subscription_tier: subscription,
-      ...(organizationId && { organization_id: organizationId }),
-      chat_id: chatId,
-      endpoint,
-      mode,
-      model: usage.model,
-      usage_type: usage.type,
-      cost_dollars: usage.costDollars,
-      model_cost_dollars: usage.modelCostDollars,
-      non_model_cost_dollars: usage.nonModelCostDollars,
-      input_tokens: usage.inputTokens,
-      output_tokens: usage.outputTokens,
-      total_tokens: usage.totalTokens,
-      cache_read_tokens: usage.cacheReadTokens ?? 0,
-      cache_write_tokens: usage.cacheWriteTokens ?? 0,
-      cost_source: usage.costSource,
-      $set: {
-        subscription_tier: subscription,
-        last_usage_cost_at: new Date().toISOString(),
-      },
-    },
-  });
-}
-
-export function shutdownPostHog(posthog: PostHog | null) {
-  if (!posthog) return;
-  after(() => posthog.shutdown());
+export function shutdownPostHog() {
 }

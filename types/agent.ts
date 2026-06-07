@@ -14,7 +14,7 @@ export type AnySandbox = Sandbox;
 // Type guard to check if sandbox is E2B
 export type IsE2BSandboxFn = (s: AnySandbox | null) => s is Sandbox;
 
-export type SandboxType = "e2b" | "desktop" | "remote-connection";
+export type SandboxType = "e2b" | "remote-connection";
 
 export interface SandboxInfo {
   type: SandboxType;

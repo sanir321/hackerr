@@ -115,13 +115,7 @@ interface GlobalStateType {
   sandboxPreference: SandboxPreference;
   setSandboxPreference: (preference: SandboxPreference) => void;
 
-  // Desktop bridge active
-  desktopBridgeActive: boolean;
-
-  // Whether a local sandbox (desktop or remote) is available
-  hasLocalSandbox: boolean;
-
-  // The sandbox preference to use for free agent mode (desktop or first remote connection ID)
+  // The sandbox preference to use for free agent mode (first remote connection ID)
   defaultLocalSandboxPreference: string | null;
 
   // Model selection
@@ -341,20 +335,16 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
     return "queue"; // Default: queue after current message completes
   });
 
-  // Tauri detection + sandbox preference (co-located in a custom hook)
-  const { sandboxPreference, setSandboxPreference, desktopBridgeActive } =
+  // Sandbox preference (co-located in a custom hook)
+  const { sandboxPreference, setSandboxPreference } =
     useSandboxPreference(!!user);
 
   // Check for available local sandbox connections
   const localConnections = useQuery(api.localSandbox.listConnections);
-  const hasLocalSandbox = useMemo(
-    () => desktopBridgeActive || (localConnections?.length ?? 0) > 0,
-    [desktopBridgeActive, localConnections],
-  );
 
   const defaultLocalSandboxPreference = useMemo<string | null>(() => {
-    const firstRemote = localConnections?.find((c) => !c.isDesktop);
-    if (firstRemote) return firstRemote.connectionId;
+    const firstConnection = localConnections?.[0];
+    if (firstConnection) return firstConnection.connectionId;
     return null;
   }, [localConnections]);
 
@@ -724,8 +714,6 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
 
     sandboxPreference,
     setSandboxPreference,
-    desktopBridgeActive,
-    hasLocalSandbox,
     defaultLocalSandboxPreference,
 
     selectedModel,

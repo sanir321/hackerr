@@ -4,7 +4,7 @@ const SENSITIVE_FIELD_PATTERN =
   /(["']?\b(?:serviceKey|service_key|apiKey|api_key|authorization|bearer|cookie|password|secret|token)\b["']?)(\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,}]+)/gi;
 
 const ENV_SECRET_PATTERN =
-  /(["']?\b(?:CONVEX_SERVICE_ROLE_KEY|POSTHOG_API_KEY)\b["']?)(\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,}]+)/gi;
+  /(["']?\b(?:CONVEX_SERVICE_ROLE_KEY)\b["']?)(\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,}]+)/gi;
 
 export const redactSensitiveErrorMessage = (message: string): string =>
   message

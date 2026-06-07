@@ -357,7 +357,7 @@ export interface QueuedMessage {
 
 export type QueueBehavior = "queue" | "stop-and-send";
 
-// "e2b" for cloud sandbox, "desktop" for Tauri desktop app, or a connectionId UUID for a specific local connection.
+// "e2b" for cloud sandbox, or a connectionId UUID for a specific local connection.
 // Uses `string & {}` to preserve autocomplete for well-known values while allowing arbitrary strings.
 export type SandboxPreference = "e2b";
 

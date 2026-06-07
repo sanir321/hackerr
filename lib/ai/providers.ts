@@ -4,10 +4,6 @@ import { createOpenAI } from "@ai-sdk/openai";
 import type { ChatMode, SelectedModel } from "@/types/chat";
 import { isAgentMode } from "@/lib/utils/mode-helpers";
 import { openrouterAttributionHeaders } from "@/lib/ai/openrouter-attribution";
-// import { withTracing } from "@posthog/ai";
-// import PostHogClient from "@/app/posthog";
-// import type { SubscriptionTier } from "@/types";
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
