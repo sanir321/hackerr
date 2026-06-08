@@ -381,9 +381,7 @@ const PricingDialog: React.FC<PricingDialogProps> = ({ isOpen, onClose }) => {
                   buttonText={"Upgrade"}
                   buttonVariant={"default"}
                   buttonClassName="font-semibold"
-                  onButtonClick={(method) => {
-                    handleTeamClick();
-                  }}
+                  onButtonClick={handleTeamClick}
                   isButtonDisabled={false}
                   customClassName="border-[#CFCEFC] bg-[#F5F5FF] dark:bg-[#282841] dark:border-[#484777]"
                   badgeText="RECOMMENDED"
