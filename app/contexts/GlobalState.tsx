@@ -303,17 +303,18 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
     },
     [],
   );
+  const convexTier = useQuery(
+    api.manualSubscriptions.getTier,
+    user?.id ? { userId: user.id } : "skip"
+  );
+
   const [subscription, setSubscription] = useState<SubscriptionTier>("free");
 
   useEffect(() => {
-    if (!user) return;
-    fetch("/api/my-tier")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.tier) setSubscription(data.tier as SubscriptionTier);
-      })
-      .catch(() => {});
-  }, [user]);
+    if (convexTier) {
+      setSubscription(convexTier as SubscriptionTier);
+    }
+  }, [convexTier]);
 
   const chatResetRef = useRef<(() => void) | null>(null);
   // Rate limit warning dismissal state (persists across chat switches)
