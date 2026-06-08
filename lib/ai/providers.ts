@@ -175,28 +175,29 @@ const kiloGateway = createOpenAI({
 });
 
 const buildProviderMap = (gateway: ReturnType<typeof createOpenAI>) => {
-  // SaaS mode: Always route all models through Kilo Gateway/OpenRouter free models
-  const standard = gateway("kilo-auto/free");
-  const pro = gateway("qwen/qwen3.7-plus:free");
-  const max = gateway("nvidia/nemotron-3-super-120b-a12b:free");
+  // Kilo Gateway free models with tool calling support
+  const nemotronSuper = gateway("nvidia/nemotron-3-super-120b-a12b:free");
+  const nemotronUltra = gateway("nvidia/nemotron-3-ultra-550b-a55b:free");
+  const laguna = gateway("poolside/laguna-m.1:free");
   const auto = gateway("kilo-auto/free");
 
   return {
     "ask-model": auto,
     "ask-model-free": auto,
-    // Agent mode requires tool-calling capable models — never use auto-router
-    "agent-model": pro,
-    "agent-model-free": pro,
-    "model-sonnet-4.6": pro,
+    // Agent mode: use tool-supported free models (rotated by Kilo Gateway)
+    "agent-model": nemotronSuper,
+    "agent-model-free": nemotronSuper,
+    "model-sonnet-4.6": nemotronUltra,
     "model-gemini-3-flash": auto,
     "model-deepseek-v4-flash": auto,
-    "model-opus-4.6": max,
-    "model-kimi-k2.6": pro,
-    "fallback-agent-model": pro,
+    "model-opus-4.6": nemotronUltra,
+    "model-kimi-k2.6": nemotronSuper,
+    // Fallbacks: different free models to avoid same-provider failures
+    "fallback-agent-model": laguna,
     "fallback-ask-model": auto,
     "fallback-gemini-3.5-flash": auto,
     "fallback-grok-4.3": auto,
-    "title-generator-model": standard,
+    "title-generator-model": auto,
   } as Record<string, any>;
 };
 
@@ -228,20 +229,20 @@ export const modelDisplayNames: Record<ModelName, string> &
   Record<string, string> = {
   "ask-model": "Auto — intelligent model router",
   "ask-model-free": "Auto — intelligent model router",
-  "agent-model": "Auto — intelligent model router",
-  "agent-model-free": "Auto — intelligent model router",
-  "model-sonnet-4.6": "Qwen 3.7 Plus",
+  "agent-model": "NVIDIA Nemotron 3 Super (free)",
+  "agent-model-free": "NVIDIA Nemotron 3 Super (free)",
+  "model-sonnet-4.6": "NVIDIA Nemotron 3 Ultra (free)",
   "model-gemini-3-flash": "Auto Router",
-  "model-deepseek-v4-flash": "DeepSeek V4 Flash",
-  "model-opus-4.6": "GPT-OSS 120B",
-  "model-kimi-k2.6": "Qwen 3.7 Plus",
+  "model-deepseek-v4-flash": "Auto Router",
+  "model-opus-4.6": "NVIDIA Nemotron 3 Ultra (free)",
+  "model-kimi-k2.6": "NVIDIA Nemotron 3 Super (free)",
   "model-llama-4": "Llama 4 Maverick",
   "model-qwen-coder": "Qwen 3 Coder",
-  "fallback-agent-model": "Auto — intelligent model router",
+  "fallback-agent-model": "Poolside Laguna M.1 (free)",
   "fallback-ask-model": "Auto — intelligent model router",
   "fallback-gemini-3.5-flash": "Auto Router",
   "fallback-grok-4.3": "Auto — intelligent model router",
-  "title-generator-model": "DeepSeek V4 Flash",
+  "title-generator-model": "Auto Router",
 };
 
 export const getModelDisplayName = (modelName: ModelName): string => {
