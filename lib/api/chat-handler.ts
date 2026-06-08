@@ -211,18 +211,38 @@ export const createChatHandler = () => {
         });
       }
 
-      const userCustomization = await getUserCustomization({ userId });
+      // Parallel block 1: independent DB/Redis calls that share no dependencies
+      // between them (all only need userId/subscription from auth above).
+      let subscriberStopped = false;
+      const [userCustomization, fetched, freeAskRateLimitInfo, freeMonthlyBudgetSnapshot, cancellationSubscriber] =
+        await Promise.all([
+          getUserCustomization({ userId }),
+          getMessagesByChatId({
+            chatId,
+            userId,
+            subscription,
+            newMessages: messages,
+            regenerate,
+            isTemporary: temporary,
+            mode,
+            useClientMessagesForRegenerate,
+          }),
+          mode === "ask" && subscription === "free"
+            ? checkRateLimit(userId, mode, subscription)
+            : Promise.resolve(null),
+          subscription === "free"
+            ? checkFreeMonthlyCostLimit(userId)
+            : Promise.resolve(null),
+          createCancellationSubscriber({
+            chatId,
+            isTemporary: !!temporary,
+            abortController: userStopSignal,
+            onStop: () => {
+              subscriberStopped = true;
+            },
+          }),
+        ]);
 
-      const fetched = await getMessagesByChatId({
-        chatId,
-        userId,
-        subscription,
-        newMessages: messages,
-        regenerate,
-        isTemporary: temporary,
-        mode,
-        useClientMessagesForRegenerate,
-      });
       const { chat, isNewChat, fileTokens } = fetched;
       const truncatedMessages =
         subscription === "free"
@@ -235,6 +255,32 @@ export const createChatHandler = () => {
         { isTemporary: !!temporary, regenerate },
       );
 
+      const uploadBasePath = isAgentMode(mode)
+        ? getUploadBasePath()
+        : undefined;
+
+      // Parallel block 2: independent operations that only need block 1 outputs.
+      // handleInitialChatAndUserMessage, processChatMessages, and buildExtraUsageConfig
+      // are independent of each other.
+      const [processResult, extraUsageConfig] = await Promise.all([
+        processChatMessages({
+          messages: truncatedMessages,
+          mode,
+          userId,
+          subscription,
+          uploadBasePath,
+          modelOverride: selectedModelOverride,
+        }),
+        buildExtraUsageConfig({
+          userId,
+          subscription,
+          userCustomization,
+          organizationId,
+        }),
+      ]);
+
+      // Fire-and-forget: save chat/message to DB. Must complete but doesn't
+      // block the stream — processResult and extraUsageConfig are independent.
       if (!temporary) {
         await handleInitialChatAndUserMessage({
           chatId,
@@ -246,25 +292,7 @@ export const createChatHandler = () => {
         });
       }
 
-      // Free ask: pre-flight rate-limit before any token counting/model work.
-      const freeAskRateLimitInfo =
-        mode === "ask" && subscription === "free"
-          ? await checkRateLimit(userId, mode, subscription)
-          : null;
-
-      const uploadBasePath = isAgentMode(mode)
-        ? getUploadBasePath()
-        : undefined;
-
-      let { processedMessages, selectedModel, sandboxFiles } =
-        await processChatMessages({
-          messages: truncatedMessages,
-          mode,
-          userId,
-          subscription,
-          uploadBasePath,
-          modelOverride: selectedModelOverride,
-        });
+      let { processedMessages, selectedModel, sandboxFiles } = processResult;
 
       // Empty after processing → Gemini rejects with "must include at least one parts field".
       if (!processedMessages || processedMessages.length === 0) {
@@ -301,13 +329,6 @@ export const createChatHandler = () => {
         selectedModel,
       );
 
-      const extraUsageConfig = await buildExtraUsageConfig({
-        userId,
-        subscription,
-        userCustomization,
-        organizationId,
-      });
-
       const rateLimitInfo: RateLimitInfo =
         freeAskRateLimitInfo ??
         (await checkRateLimit(
@@ -319,11 +340,6 @@ export const createChatHandler = () => {
           selectedModel,
           organizationId,
         ));
-
-      const freeMonthlyBudgetSnapshot =
-        subscription === "free"
-          ? await checkFreeMonthlyCostLimit(userId)
-          : null;
 
       usageRefundTracker.recordDeductions(rateLimitInfo);
 
@@ -349,17 +365,6 @@ export const createChatHandler = () => {
           // Best-effort; temp coordination must not block the request.
         }
       }
-
-      // Start cancellation subscriber (Redis pub/sub with fallback to polling)
-      let subscriberStopped = false;
-      const cancellationSubscriber = await createCancellationSubscriber({
-        chatId,
-        isTemporary: !!temporary,
-        abortController: userStopSignal,
-        onStop: () => {
-          subscriberStopped = true;
-        },
-      });
 
       const summarizationTracker = new SummarizationTracker();
 
