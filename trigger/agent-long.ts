@@ -653,6 +653,13 @@ export const agentLongTask = task({
     });
 
     try {
+      triggerLogger.info("[agent-long] setup: fetching DB data", {
+        chatId,
+        userId,
+        subscription,
+        temporary: !!temporary,
+        messageCount: messages.length,
+      });
       // Re-fetch from DB so we have fileTokens for summarization.
       // The route already saved the user message; newMessages:[] avoids duplicates.
       const [userCustomization, fetched] = await Promise.all([
@@ -669,6 +676,12 @@ export const agentLongTask = task({
       ]);
       const { chat, fileTokens } = fetched;
       const truncatedMessages = fetched.truncatedMessages;
+      triggerLogger.info("[agent-long] setup: DB data fetched", {
+        chatId,
+        truncatedMessageCount: truncatedMessages.length,
+        hasChat: !!chat,
+        fileTokens,
+      });
 
       const baseTodos: Todo[] = getBaseTodosForRequest(
         (chat?.todos as unknown as Todo[]) || [],
@@ -694,6 +707,14 @@ export const agentLongTask = task({
           uploadBasePath,
           modelOverride: selectedModelOverride,
         });
+
+      triggerLogger.info("[agent-long] setup: messages processed", {
+        chatId,
+        processedMessageCount: processedMessages.length,
+        selectedModel,
+        selectedModelOverride,
+        sandboxFileCount: sandboxFiles.length,
+      });
 
       if (!processedMessages.length) {
         throw new ChatSDKError(
@@ -1113,6 +1134,11 @@ export const agentLongTask = task({
             const createStream = (modelName: string) => {
               streamCtx.tools = getToolsForModel(modelName);
               setCurrentModelName(modelName);
+              triggerLogger.info("[agent-long] streaming: creating stream", {
+                chatId,
+                modelName,
+                toolCount: Object.keys(streamCtx.tools).length,
+              });
               return createAgentStream(modelName, streamCtx, state);
             };
 
@@ -1590,6 +1616,11 @@ export const agentLongTask = task({
         .set("status", "streaming")
         .set("model", selectedModel)
         .set("setupBeforeStreamMs", Date.now() - taskStartTime);
+      triggerLogger.info("[agent-long] streaming: piping uiStream", {
+        chatId,
+        selectedModel,
+        setupMs: Date.now() - taskStartTime,
+      });
       const { waitUntilComplete } = agentUiStream.pipe(uiStream);
       streamPiped = true;
       await waitUntilComplete();
@@ -1622,6 +1653,13 @@ export const agentLongTask = task({
       metadata.set("status", "done");
     } catch (error) {
       await releaseFreeRunLockOnce();
+      triggerLogger.error("[agent-long] task error", {
+        chatId,
+        phase: streamPiped ? "streaming" : "setup",
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorName: error instanceof Error ? error.name : "unknown",
+        errorStack: error instanceof Error ? error.stack?.slice(0, 500) : undefined,
+      });
       const chatMissingAfterStream =
         streamPiped &&
         error instanceof ChatSDKError &&
