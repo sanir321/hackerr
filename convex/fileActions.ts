@@ -744,7 +744,7 @@ export const saveFile = action({
       args.skipTokenValidation || isAgentUploadMode;
 
     // Check if paid tier (free tier cannot upload)
-    if (!hasPaidEntitlement(entitlements)) {
+    if (!(await hasPaidEntitlement(entitlements))) {
       throw new ConvexError({
         code: "PAID_PLAN_REQUIRED",
         message: "Paid plan required for file uploads",

@@ -23,6 +23,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  setSubscriptionTier(userId, tier);
+  await setSubscriptionTier(userId, tier);
   return NextResponse.json({ userId, tier });
 }

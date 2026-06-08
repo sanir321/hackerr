@@ -21,6 +21,7 @@ import type * as fileStorage from "../fileStorage.js";
 import type * as lib_logger from "../lib/logger.js";
 import type * as lib_utils from "../lib/utils.js";
 import type * as localSandbox from "../localSandbox.js";
+import type * as manualSubscriptions from "../manualSubscriptions.js";
 import type * as messages from "../messages.js";
 import type * as notes from "../notes.js";
 import type * as rateLimitStatus from "../rateLimitStatus.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   "lib/logger": typeof lib_logger;
   "lib/utils": typeof lib_utils;
   localSandbox: typeof localSandbox;
+  manualSubscriptions: typeof manualSubscriptions;
   messages: typeof messages;
   notes: typeof notes;
   rateLimitStatus: typeof rateLimitStatus;

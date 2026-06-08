@@ -353,6 +353,18 @@ export default defineSchema({
     user_id: v.string(),
   }).index("by_chat_id", ["chat_id"]),
 
+  user_subscriptions: defineTable({
+    user_id: v.string(),
+    tier: v.union(
+      v.literal("free"),
+      v.literal("pro"),
+      v.literal("pro-plus"),
+      v.literal("ultra"),
+      v.literal("team"),
+    ),
+    updated_at: v.number(),
+  }).index("by_user_id", ["user_id"]),
+
   // Local Sandbox Tables
   local_sandbox_tokens: defineTable({
     user_id: v.string(),

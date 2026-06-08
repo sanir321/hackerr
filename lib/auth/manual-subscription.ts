@@ -1,35 +1,34 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { join } from "path";
+import { getConvexClient } from "@/lib/db/convex-client";
+import { api } from "@/convex/_generated/api";
 import type { SubscriptionTier } from "@/types";
-
-const DATA_DIR = join(process.cwd(), "data");
-const FILE_PATH = join(DATA_DIR, "subscriptions.json");
 
 type Tier = SubscriptionTier;
 
-type Store = Record<string, Tier>;
-
-function readStore(): Store {
+export async function getSubscriptionTier(userId: string): Promise<Tier> {
   try {
-    if (!existsSync(FILE_PATH)) return {};
-    return JSON.parse(readFileSync(FILE_PATH, "utf-8"));
-  } catch {
-    return {};
+    const convex = getConvexClient();
+    const tier = await convex.query(api.manualSubscriptions.getTier, {
+      userId,
+    });
+    return (tier as Tier) ?? "free";
+  } catch (error) {
+    console.error("[Manual Subscription] Failed to get tier from Convex:", error);
+    return "free";
   }
 }
 
-function writeStore(store: Store): void {
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-  writeFileSync(FILE_PATH, JSON.stringify(store, null, 2));
-}
-
-export function getSubscriptionTier(userId: string): Tier {
-  const store = readStore();
-  return store[userId] ?? "free";
-}
-
-export function setSubscriptionTier(userId: string, tier: Tier): void {
-  const store = readStore();
-  store[userId] = tier;
-  writeStore(store);
+export async function setSubscriptionTier(
+  userId: string,
+  tier: Tier,
+): Promise<void> {
+  try {
+    const convex = getConvexClient();
+    await convex.mutation(api.manualSubscriptions.setTier, {
+      userId,
+      tier: tier as any,
+    });
+  } catch (error) {
+    console.error("[Manual Subscription] Failed to set tier in Convex:", error);
+    throw error;
+  }
 }

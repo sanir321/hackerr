@@ -7,20 +7,20 @@ export function parseEntitlements(entitlements: readonly string[]) {
   return entitlements;
 }
 
-export function resolveSubscriptionTier(
+export async function resolveSubscriptionTier(
   userIdOrEntitlements: string | readonly string[],
-): SubscriptionTier {
+): Promise<SubscriptionTier> {
   if (typeof userIdOrEntitlements === "string") {
-    return getSubscriptionTier(userIdOrEntitlements);
+    return await getSubscriptionTier(userIdOrEntitlements);
   }
   return "free";
 }
 
-export function hasPaidEntitlement(
+export async function hasPaidEntitlement(
   userIdOrEntitlements: string | readonly string[],
-): boolean {
+): Promise<boolean> {
   if (typeof userIdOrEntitlements === "string") {
-    return PAID_TIERS.includes(getSubscriptionTier(userIdOrEntitlements));
+    return PAID_TIERS.includes(await getSubscriptionTier(userIdOrEntitlements));
   }
   return true;
 }

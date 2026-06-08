@@ -47,7 +47,7 @@ export const getUserIDAndPro = async (
     }
 
     const userId = session.user.id;
-    const tier = getSubscriptionTier(userId);
+    const tier = await getSubscriptionTier(userId);
 
     return {
       userId,

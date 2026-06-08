@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ tier: "free" });
     }
 
-    const tier = getSubscriptionTier(userId);
+    const tier = await getSubscriptionTier(userId);
     return NextResponse.json({ tier });
   } catch {
     return NextResponse.json({ tier: "free" });

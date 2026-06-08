@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     const userId = ((authResult as any)?.user?.id ?? "") as string;
 
     const allEntitlements = parseEntitlements(entitlements);
-    const subscription = resolveSubscriptionTier(userId);
+    const subscription = await resolveSubscriptionTier(userId);
 
     const response = json({
       entitlements: allEntitlements,
