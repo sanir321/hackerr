@@ -160,25 +160,25 @@ export const WebToolHandler = memo(function WebToolHandler({
 
   switch (state) {
     case "input-streaming":
-      return status === "streaming" ? (
+      return (
         <ToolBlock
           key={toolCallId}
           icon={icon}
           action={briefLabel(getAction())}
-          isShimmer={true}
+          isShimmer={status === "streaming"}
         />
-      ) : null;
+      );
 
     case "input-available":
-      return status === "streaming" ? (
+      return (
         <ToolBlock
           key={toolCallId}
           icon={icon}
           action={briefLabel(getAction())}
           target={briefTarget(target)}
-          isShimmer={true}
+          isShimmer={status === "streaming"}
         />
-      ) : null;
+      );
 
     case "output-available":
       return (

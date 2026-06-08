@@ -117,7 +117,6 @@ export const TerminalToolHandler = memo(function TerminalToolHandler({
 
   switch (state) {
     case "input-streaming": {
-      if (status !== "streaming") return null;
       // For non-exec shell actions (wait, send, kill), use the action-specific
       // label instead of "Generating command" which only applies to exec
       if (isShellTool && shellAction && shellAction !== "exec") {
@@ -127,7 +126,7 @@ export const TerminalToolHandler = memo(function TerminalToolHandler({
             icon={<Terminal />}
             action={blockAction(true)}
             target={blockTarget || undefined}
-            isShimmer={true}
+            isShimmer={status === "streaming"}
           />
         );
       }
@@ -136,7 +135,7 @@ export const TerminalToolHandler = memo(function TerminalToolHandler({
           key={toolCallId}
           icon={<Terminal />}
           action="Generating command"
-          isShimmer={true}
+          isShimmer={status === "streaming"}
         />
       );
     }
