@@ -38,6 +38,8 @@ export interface SandboxManager {
   isSandboxUnavailable(): boolean;
   /** Whether the effective sandbox can create interactive PTY sessions. */
   supportsInteractivePty?(): Promise<boolean>;
+  /** Returns true if sandbox was just booted/resumed (skip health check for first command). */
+  consumeJustBooted?(): boolean;
 }
 
 export interface SandboxBootInfo {

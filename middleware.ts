@@ -87,6 +87,8 @@ function isBrowserRequest(request: NextRequest): boolean {
 }
 
 const SESSION_HEADER = "x-workos-session";
+const UMBRAA_USER_ID = "x-umbraa-user-id";
+const UMBRAA_ORG_ID = "x-umbraa-org-id";
 
 function withReferralCookie(
   request: NextRequest,
@@ -142,6 +144,15 @@ export default async function middleware(
 
   const requestHeaders = buildRequestHeaders(request, headers);
   const responseHeaders = buildResponseHeaders(headers);
+
+  // Inject cached session data into headers so route handlers don't call authkit() again
+  if (session.user) {
+    requestHeaders.set(UMBRAA_USER_ID, session.user.id);
+    const orgId = (session as any).organizationId;
+    if (orgId) {
+      requestHeaders.set(UMBRAA_ORG_ID, orgId);
+    }
+  }
 
   if (session.user || isUnauthenticatedPath(pathname)) {
     return withReferralCookie(

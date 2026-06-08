@@ -55,6 +55,7 @@ export class HybridSandboxManager implements SandboxManager {
   private pendingFallbackInfo: SandboxFallbackInfo | null = null;
   private healthFailureCount = 0;
   private sandboxUnavailable = false;
+  private justBooted = true;
 
   constructor(
     private userID: string,
@@ -66,6 +67,18 @@ export class HybridSandboxManager implements SandboxManager {
     private onBoot?: (info: SandboxBootInfo) => void,
   ) {
     this.sandbox = initialSandbox || null;
+  }
+
+  /**
+   * Returns true if the sandbox was just booted/resumed (first command).
+   * Caller should skip health check for the first command to avoid latency.
+   */
+  consumeJustBooted(): boolean {
+    if (this.justBooted) {
+      this.justBooted = false;
+      return true;
+    }
+    return false;
   }
 
   recordHealthFailure(): boolean {

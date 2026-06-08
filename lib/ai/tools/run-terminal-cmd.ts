@@ -342,7 +342,8 @@ In using these tools, adhere to the following guidelines:
 
         // Only health-check E2B sandboxes — local sandboxes don't need it
         // (they relay commands through Convex and have their own connectivity)
-        if (isE2BSandbox(sandbox)) {
+        // Skip health check for first command after sandbox boot (it's guaranteed healthy)
+        if (isE2BSandbox(sandbox) && !(sandboxManager.consumeJustBooted?.() ?? false)) {
           try {
             await waitForSandboxReady(sandbox, 5, abortSignal);
             sandboxManager.resetHealthFailures();
@@ -619,7 +620,7 @@ In using these tools, adhere to the following guidelines:
 
             // Execute command with retry logic for transient failures
             // Sandbox readiness already checked, so these retries handle race conditions
-            // Retries: 6 attempts with exponential backoff (500ms, 1s, 2s, 4s, 8s, 16s) + jitter (±50ms)
+            // Retries: 3 attempts with exponential backoff (500ms, 1s, 2s) + jitter (±50ms)
             const runPromise: Promise<{
               stdout: string;
               stderr: string;
@@ -644,7 +645,7 @@ In using these tools, adhere to the following guidelines:
                     };
                   },
                   {
-                    maxRetries: 6,
+                    maxRetries: 3,
                     baseDelayMs: 500,
                     jitterMs: 50,
                     isPermanentError,
@@ -656,7 +657,7 @@ In using these tools, adhere to the following guidelines:
                   () =>
                     sandboxInstance.commands.run(effectiveCommand, runOptions),
                   {
-                    maxRetries: 6,
+                    maxRetries: 3,
                     baseDelayMs: 500,
                     jitterMs: 50,
                     isPermanentError,
