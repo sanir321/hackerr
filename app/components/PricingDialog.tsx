@@ -326,6 +326,20 @@ const PricingDialog: React.FC<PricingDialogProps> = ({ isOpen, onClose }) => {
         ? 166
         : 200;
 
+  const proButtonConfig = (() => {
+    if (subscription === "pro") {
+      return { text: "Your current plan", disabled: true, className: "opacity-50 cursor-not-allowed" };
+    }
+    return { text: "Upgrade", disabled: upgradeLoading, className: "font-semibold" };
+  })();
+
+  const premiumButtonConfig = (() => {
+    if (subscription === selectedPremiumPlan) {
+      return { text: "Your current plan", disabled: true, className: "opacity-50 cursor-not-allowed" };
+    }
+    return { text: "Upgrade", disabled: upgradeLoading, className: "" };
+  })();
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>

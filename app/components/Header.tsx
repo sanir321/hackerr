@@ -35,19 +35,6 @@ const Header: React.FC<HeaderProps> = ({ chatTitle, hideDownload = false }) => {
           {!chatTitle && <div className="flex gap-[40px]"></div>}
           {!loading && !user && (
             <div className="flex gap-2 items-center">
-              {!hideDownload && (
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="default"
-                  className="rounded-[10px]"
-                >
-                  <Link href="/download">
-                    <Download className="h-4 w-4 mr-1.5" />
-                    Download
-                  </Link>
-                </Button>
-              )}
               <Button
                 data-testid="sign-in-button"
                 onClick={() => window.location.href = "/login"}

@@ -239,15 +239,6 @@ export const ImageViewer = ({
       data-testid="image-zoom-modal"
     >
       <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3 rounded-xl bg-black/65 py-1 pl-1 pr-3 text-white shadow-2xl backdrop-blur-2xl">
-        <button
-          type="button"
-          className="flex size-7 cursor-pointer items-center justify-center rounded transition-colors hover:bg-white/10"
-          onClick={handleDownload}
-          aria-label="Download image"
-        >
-          <Download className="h-5 w-5" aria-hidden="true" />
-        </button>
-        <div className="h-4 w-px bg-white/25" />
         <div className="flex items-center gap-1.5">
           <button
             type="button"
