@@ -458,7 +458,7 @@ const PricingDialog: React.FC<PricingDialogProps> = ({ isOpen, onClose }) => {
                   buttonClassName=""
                   onButtonClick={(method) => {
                     const planName = selectedPremiumPlan === "pro-plus" ? "Pro+" : "Ultra";
-                    const plan = isYearly ? `${selectedPremiumPlan}-yearly-plan` : `${selectedPremiumPlan}-monthly-plan`;
+                    const plan = (isYearly ? `${selectedPremiumPlan}-yearly-plan` : `${selectedPremiumPlan}-monthly-plan`) as "pro-plus-monthly-plan" | "pro-plus-yearly-plan" | "ultra-monthly-plan" | "ultra-yearly-plan";
                     handleUpgradeClick(plan, planName, premiumPlanPrice, method);
                   }}
                   isButtonDisabled={upgradeLoading}
