@@ -33,9 +33,9 @@ describe("client-storage selected model", () => {
 
     it("migrates legacy underlying-model ids to Umbraa tiers", () => {
       window.localStorage.setItem(STORAGE_KEY, "opus-4.6");
-      expect(readSelectedModel()).toBe("umbraa-max");
+      expect(readSelectedModel()).toBe("umbraa-owl");
       // The migration rewrites the unified key to the tier id.
-      expect(window.localStorage.getItem(STORAGE_KEY)).toBe("umbraa-max");
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe("umbraa-owl");
     });
 
     it("maps legacy gemini-3-flash and kimi-k2.6 both to umbraa-standard", () => {
@@ -79,8 +79,8 @@ describe("client-storage selected model", () => {
       window.localStorage.setItem(LEGACY_ASK_KEY, "opus-4.6");
       window.localStorage.setItem(LEGACY_AGENT_KEY, "sonnet-4.6");
 
-      expect(readSelectedModel()).toBe("umbraa-max");
-      expect(window.localStorage.getItem(STORAGE_KEY)).toBe("umbraa-max");
+      expect(readSelectedModel()).toBe("umbraa-owl");
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe("umbraa-owl");
       expect(window.localStorage.getItem(LEGACY_ASK_KEY)).toBeNull();
       expect(window.localStorage.getItem(LEGACY_AGENT_KEY)).toBeNull();
     });
@@ -115,8 +115,8 @@ describe("client-storage selected model", () => {
 
   describe("writeSelectedModel", () => {
     it("persists under the unified key", () => {
-      writeSelectedModel("umbraa-max");
-      expect(window.localStorage.getItem(STORAGE_KEY)).toBe("umbraa-max");
+      writeSelectedModel("umbraa-owl");
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBe("umbraa-owl");
     });
   });
 

@@ -181,54 +181,66 @@ describe("selectModel", () => {
     });
   });
 
-  // Tier override — Pro/Max map to the same provider key in both modes
+  // Tier override — each tier maps to the same provider key in both modes
   describe("tier override for ask mode (paid users)", () => {
-    it("should map Umbraa Pro to Sonnet 4.6 in ask mode", () => {
+    it("should map Umbraa Pro to Nemotron Ultra in ask mode", () => {
       expect(selectModel("ask", "ultra", "umbraa-pro")).toBe(
-        "model-sonnet-4.6",
+        "model-nemotron-ultra",
       );
     });
 
-    it("should map Umbraa Pro to Sonnet 4.6 for team users", () => {
+    it("should map Umbraa Pro to Nemotron Ultra for team users", () => {
       expect(selectModel("ask", "team", "umbraa-pro")).toBe(
-        "model-sonnet-4.6",
+        "model-nemotron-ultra",
       );
     });
 
-    it("should map Umbraa Standard to DeepSeek V4 Flash when no image/PDF", () => {
+    it("should map Umbraa Standard to DeepSeek V4 Flash", () => {
       expect(selectModel("ask", "pro", "umbraa-standard")).toBe(
         "model-deepseek-v4-flash",
       );
     });
 
-    it("should promote Umbraa Standard to Gemini 3 Flash when an image/PDF is attached", () => {
+    it("should map Umbraa Standard to DeepSeek V4 Flash even with image/PDF", () => {
       expect(selectModel("ask", "pro", "umbraa-standard", true)).toBe(
-        "model-gemini-3-flash",
+        "model-deepseek-v4-flash",
       );
     });
 
-    it("should map Umbraa Max to Opus 4.6", () => {
-      expect(selectModel("ask", "pro", "umbraa-max")).toBe("model-opus-4.6");
+    it("should map Umbraa Owl to Owl Alpha", () => {
+      expect(selectModel("ask", "pro", "umbraa-owl")).toBe("model-owl-alpha");
+    });
+
+    it("should map Umbraa Reason to reasoning model", () => {
+      expect(selectModel("ask", "pro", "umbraa-reason")).toBe(
+        "model-reasoning",
+      );
     });
   });
 
-  // Agent mode — Lite resolves to Kimi instead of Gemini
+  // Agent mode
   describe("tier override in agent mode", () => {
-    it("should map Umbraa Standard to Kimi K2.6 in agent mode", () => {
+    it("should map Umbraa Standard to DeepSeek V4 Flash in agent mode", () => {
       expect(selectModel("agent", "pro", "umbraa-standard")).toBe(
-        "model-kimi-k2.6",
+        "model-deepseek-v4-flash",
       );
     });
 
-    it("should map Umbraa Pro to Sonnet 4.6 in agent mode", () => {
+    it("should map Umbraa Pro to Nemotron Ultra in agent mode", () => {
       expect(selectModel("agent", "pro", "umbraa-pro")).toBe(
-        "model-sonnet-4.6",
+        "model-nemotron-ultra",
       );
     });
 
-    it("should map Umbraa Max to Opus 4.6 in agent mode", () => {
-      expect(selectModel("agent", "pro", "umbraa-max")).toBe(
-        "model-opus-4.6",
+    it("should map Umbraa Owl to Owl Alpha in agent mode", () => {
+      expect(selectModel("agent", "pro", "umbraa-owl")).toBe(
+        "model-owl-alpha",
+      );
+    });
+
+    it("should map Umbraa Reason to reasoning model in agent mode", () => {
+      expect(selectModel("agent", "pro", "umbraa-reason")).toBe(
+        "model-reasoning",
       );
     });
 

@@ -31,27 +31,39 @@ describe("ModelSelector tier ↔ provider drift", () => {
     expect([...askIds].sort()).toEqual([...agentIds].sort());
   });
 
-  it("Umbraa Standard resolves to different providers per mode", () => {
+  it("Umbraa Standard resolves to deepseek-v4-flash in both modes", () => {
     expect(resolveTierToProviderKey("umbraa-standard", "ask")).toBe(
-      "model-gemini-3-flash",
+      "model-deepseek-v4-flash",
     );
     expect(resolveTierToProviderKey("umbraa-standard", "agent")).toBe(
-      "model-kimi-k2.6",
+      "model-deepseek-v4-flash",
     );
   });
 
-  it("Umbraa Pro and Max resolve to the same provider in both modes", () => {
+  it("Umbraa Pro resolves to nemotron-ultra in both modes", () => {
     expect(resolveTierToProviderKey("umbraa-pro", "ask")).toBe(
-      "model-sonnet-4.6",
+      "model-nemotron-ultra",
     );
     expect(resolveTierToProviderKey("umbraa-pro", "agent")).toBe(
-      "model-sonnet-4.6",
+      "model-nemotron-ultra",
     );
-    expect(resolveTierToProviderKey("umbraa-max", "ask")).toBe(
-      "model-opus-4.6",
+  });
+
+  it("Umbraa Owl resolves to owl-alpha in both modes", () => {
+    expect(resolveTierToProviderKey("umbraa-owl", "ask")).toBe(
+      "model-owl-alpha",
     );
-    expect(resolveTierToProviderKey("umbraa-max", "agent")).toBe(
-      "model-opus-4.6",
+    expect(resolveTierToProviderKey("umbraa-owl", "agent")).toBe(
+      "model-owl-alpha",
+    );
+  });
+
+  it("Umbraa Reason resolves to reasoning model in both modes", () => {
+    expect(resolveTierToProviderKey("umbraa-reason", "ask")).toBe(
+      "model-reasoning",
+    );
+    expect(resolveTierToProviderKey("umbraa-reason", "agent")).toBe(
+      "model-reasoning",
     );
   });
 
@@ -60,12 +72,9 @@ describe("ModelSelector tier ↔ provider drift", () => {
     expect(resolveTierToProviderKey("auto", "agent")).toBeNull();
   });
 
-  it("hover-popup descriptions are present for every Umbraa tier", () => {
-    const tiered = allOptions.filter((o) => o.label.startsWith("Umbraa"));
-    expect(tiered.length).toBeGreaterThan(0);
-    for (const option of tiered) {
+  it("hover-popup descriptions are present for every tier", () => {
+    for (const option of allOptions) {
       expect(option.description).toBeTruthy();
-      expect(option.poweredBy).toBeTruthy();
     }
   });
 });

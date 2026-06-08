@@ -14,11 +14,13 @@ type CostTier = "low" | "medium" | "high" | "very-high";
 export function getCostTier(modelId: string, mode?: ChatMode): CostTier {
   switch (modelId) {
     case "umbraa-standard":
-      return mode && isAgentMode(mode) ? "medium" : "low";
+      return "low";
     case "umbraa-pro":
-      return "high";
-    case "umbraa-max":
-      return "very-high";
+      return "medium";
+    case "umbraa-owl":
+      return "medium";
+    case "umbraa-reason":
+      return "medium";
     default:
       return "medium";
   }

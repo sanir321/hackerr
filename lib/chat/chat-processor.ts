@@ -63,7 +63,7 @@ export function selectModel(
   // `model-gemini-3-flash` keys so any UI that reads `getModelDisplayName`
   // shows the picked model rather than the auto-router label.
   if (selectedModel === "umbraa-standard" && !isAgent) {
-    return askUsesDeepSeek ? "model-deepseek-v4-flash" : "model-gemini-3-flash";
+    return askUsesDeepSeek ? "model-deepseek-v4-flash" : "model-deepseek-v4-flash";
   }
 
   const providerKey = resolveTierToProviderKey(selectedModel, mode);

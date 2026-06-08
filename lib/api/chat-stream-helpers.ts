@@ -465,21 +465,15 @@ const MODEL_FALLBACK_CHAIN: Partial<Record<ModelName, readonly ModelName[]>> = {
   "ask-model-free": ["fallback-ask-model"],
   "agent-model-free": ["fallback-agent-model"],
   "model-deepseek-v4-flash": ["fallback-ask-model"],
-  "ask-model": ["fallback-grok-4.3"],
-  "agent-model": ["fallback-grok-4.3"],
-  "model-gemini-3-flash": ["fallback-grok-4.3"],
-  "model-kimi-k2.6": ["fallback-grok-4.3"],
+  "model-nemotron-ultra": ["fallback-agent-model"],
+  "model-owl-alpha": ["fallback-agent-model"],
+  "model-reasoning": ["fallback-agent-model"],
+  "ask-model": ["fallback-ask-model"],
+  "agent-model": ["fallback-agent-model"],
 };
 
-const ANTHROPIC_FALLBACK_CHAIN_BY_MODE: Record<ChatMode, readonly ModelName[]> =
-  {
-    agent: ["model-kimi-k2.6", "fallback-grok-4.3"],
-    ask: ["model-gemini-3-flash"],
-  };
-
 const ANTHROPIC_MULTIMODAL_AGENT_FALLBACK_CHAIN = [
-  "fallback-gemini-3.5-flash",
-  "fallback-grok-4.3",
+  "fallback-agent-model",
 ] as const satisfies readonly ModelName[];
 
 type FallbackOptions = {
@@ -492,11 +486,11 @@ const getFallbackKeys = (
   options: FallbackOptions = {},
 ): readonly ModelName[] | undefined => {
   if (!modelName) return undefined;
-  if (modelName === "model-opus-4.6" || modelName === "model-sonnet-4.6") {
+  if (modelName === "model-nemotron-ultra" || modelName === "model-owl-alpha" || modelName === "model-reasoning") {
     if (mode === "agent" && options.hasMultimodalToolResults) {
       return ANTHROPIC_MULTIMODAL_AGENT_FALLBACK_CHAIN;
     }
-    return ANTHROPIC_FALLBACK_CHAIN_BY_MODE[mode ?? "agent"];
+    return ["fallback-agent-model"];
   }
   return MODEL_FALLBACK_CHAIN[modelName as ModelName];
 };
@@ -509,9 +503,9 @@ export function getRetryFallbackModel(
     return mode === "agent" ? "fallback-agent-model" : "fallback-ask-model";
   }
   if (isGeminiModel(modelName)) {
-    return "fallback-grok-4.3";
+    return "fallback-ask-model";
   }
-  return "fallback-grok-4.3";
+  return "fallback-agent-model";
 }
 
 const resolveSlug = (modelName: string): string | undefined => {

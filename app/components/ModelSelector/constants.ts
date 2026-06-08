@@ -19,13 +19,19 @@ export const ASK_MODEL_OPTIONS: ModelOption[] = [
   },
   {
     id: "umbraa-pro",
-    label: "Qwen 3.7 Plus",
-    description: "Superior performance for complex work",
+    label: "Nemotron 3 Ultra 550B",
+    description: "Most powerful free model, 1M context",
   },
   {
-    id: "umbraa-max",
-    label: "Nemotron 3 Super 120B",
-    description: "Maximum intelligence for hard problems",
+    id: "umbraa-owl",
+    label: "Owl Alpha",
+    description: "Massive 1M context window for long documents",
+  },
+  {
+    id: "umbraa-reason",
+    label: "Nemotron 3 Nano Omni",
+    description: "Built-in reasoning for complex problems",
+    thinking: true,
   },
 ];
 
@@ -38,14 +44,20 @@ export const AGENT_MODEL_OPTIONS: ModelOption[] = [
   },
   {
     id: "umbraa-pro",
-    label: "Qwen 3.7 Plus",
-    description: "Superior agent performance",
+    label: "Nemotron 3 Ultra 550B",
+    description: "Most powerful agent, 1M context",
     thinking: true,
   },
   {
-    id: "umbraa-max",
-    label: "Nemotron 3 Super 120B",
-    description: "Maximum agent intelligence",
+    id: "umbraa-owl",
+    label: "Owl Alpha",
+    description: "Agent with massive 1M context",
+    thinking: true,
+  },
+  {
+    id: "umbraa-reason",
+    label: "Nemotron 3 Nano Omni",
+    description: "Reasoning agent for complex problems",
     thinking: true,
   },
 ];

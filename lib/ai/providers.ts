@@ -178,8 +178,10 @@ const buildProviderMap = (gateway: ReturnType<typeof createOpenAI>) => {
   // Kilo Gateway free models with tool calling support
   const nemotronSuper = gateway("nvidia/nemotron-3-super-120b-a12b:free");
   const nemotronUltra = gateway("nvidia/nemotron-3-ultra-550b-a55b:free");
+  const owlAlpha = gateway("openrouter/owl-alpha");
   const laguna = gateway("poolside/laguna-m.1:free");
   const auto = gateway("kilo-auto/free");
+  const reasoning = gateway("nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free");
 
   return {
     "ask-model": auto,
@@ -187,16 +189,13 @@ const buildProviderMap = (gateway: ReturnType<typeof createOpenAI>) => {
     // Agent mode: use tool-supported free models (rotated by Kilo Gateway)
     "agent-model": nemotronSuper,
     "agent-model-free": nemotronSuper,
-    "model-sonnet-4.6": nemotronUltra,
-    "model-gemini-3-flash": auto,
     "model-deepseek-v4-flash": auto,
-    "model-opus-4.6": nemotronUltra,
-    "model-kimi-k2.6": nemotronSuper,
+    "model-nemotron-ultra": nemotronUltra,
+    "model-owl-alpha": owlAlpha,
+    "model-reasoning": reasoning,
     // Fallbacks: different free models to avoid same-provider failures
     "fallback-agent-model": laguna,
     "fallback-ask-model": auto,
-    "fallback-gemini-3.5-flash": auto,
-    "fallback-grok-4.3": auto,
     "title-generator-model": auto,
   } as Record<string, any>;
 };
@@ -211,17 +210,12 @@ export const modelCutoffDates: Record<ModelName, string> &
   "ask-model-free": "May 2025",
   "agent-model": "May 2025",
   "agent-model-free": "May 2025",
-  "model-sonnet-4.6": "May 2025",
-  "model-gemini-3-flash": "January 2025",
   "model-deepseek-v4-flash": "May 2025",
-  "model-opus-4.6": "May 2025",
-  "model-kimi-k2.6": "April 2024",
-  "model-llama-4": "January 2026",
-  "model-qwen-coder": "March 2026",
+  "model-nemotron-ultra": "May 2025",
+  "model-owl-alpha": "May 2025",
+  "model-reasoning": "May 2025",
   "fallback-agent-model": "January 2025",
   "fallback-ask-model": "January 2025",
-  "fallback-gemini-3.5-flash": "May 2026",
-  "fallback-grok-4.3": "December 2025",
   "title-generator-model": "January 2025",
 };
 
@@ -231,17 +225,12 @@ export const modelDisplayNames: Record<ModelName, string> &
   "ask-model-free": "Auto — intelligent model router",
   "agent-model": "NVIDIA Nemotron 3 Super (free)",
   "agent-model-free": "NVIDIA Nemotron 3 Super (free)",
-  "model-sonnet-4.6": "NVIDIA Nemotron 3 Ultra (free)",
-  "model-gemini-3-flash": "Auto Router",
-  "model-deepseek-v4-flash": "Auto Router",
-  "model-opus-4.6": "NVIDIA Nemotron 3 Ultra (free)",
-  "model-kimi-k2.6": "NVIDIA Nemotron 3 Super (free)",
-  "model-llama-4": "Llama 4 Maverick",
-  "model-qwen-coder": "Qwen 3 Coder",
+  "model-deepseek-v4-flash": "DeepSeek V4 Flash (auto-router)",
+  "model-nemotron-ultra": "NVIDIA Nemotron 3 Ultra 550B (free)",
+  "model-owl-alpha": "Owl Alpha (1M context)",
+  "model-reasoning": "NVIDIA Nemotron 3 Nano Omni (reasoning)",
   "fallback-agent-model": "Poolside Laguna M.1 (free)",
   "fallback-ask-model": "Auto — intelligent model router",
-  "fallback-gemini-3.5-flash": "Auto Router",
-  "fallback-grok-4.3": "Auto — intelligent model router",
   "title-generator-model": "Auto Router",
 };
 
@@ -288,7 +277,7 @@ export function supportsMultimodalToolResults(modelName?: string): boolean {
 }
 
 export function isGeminiModel(modelName: string): boolean {
-  return modelName === "ask-model" || modelName === "model-gemini-3-flash";
+  return modelName === "ask-model";
 }
 
 /**
@@ -302,11 +291,13 @@ export function resolveTierToProviderKey(
 
   switch (tier) {
     case "umbraa-standard":
-      return isAgentMode(mode) ? "model-kimi-k2.6" : "model-gemini-3-flash";
+      return "model-deepseek-v4-flash";
     case "umbraa-pro":
-      return "model-sonnet-4.6";
-    case "umbraa-max":
-      return "model-opus-4.6";
+      return "model-nemotron-ultra";
+    case "umbraa-owl":
+      return "model-owl-alpha";
+    case "umbraa-reason":
+      return "model-reasoning";
     default:
       return "model-deepseek-v4-flash";
   }

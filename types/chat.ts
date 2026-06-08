@@ -15,13 +15,15 @@ export type SelectedModel =
   | "auto"
   | "umbraa-standard"
   | "umbraa-pro"
-  | "umbraa-max";
+  | "umbraa-owl"
+  | "umbraa-reason";
 
 export const SELECTABLE_MODELS: readonly SelectedModel[] = [
   "auto",
   "umbraa-standard",
   "umbraa-pro",
-  "umbraa-max",
+  "umbraa-owl",
+  "umbraa-reason",
 ];
 
 /**
@@ -35,7 +37,8 @@ export const SELECTABLE_MODELS: readonly SelectedModel[] = [
  */
 export const LEGACY_MODEL_ID_MAP: Record<string, SelectedModel> = {
   "sonnet-4.6": "umbraa-pro",
-  "opus-4.6": "umbraa-max",
+  "opus-4.6": "umbraa-owl",
+  "umbraa-max": "umbraa-owl",
   "gemini-3-flash": "umbraa-standard",
   "kimi-k2.6": "umbraa-standard",
   // Grok was removed from the picker before the tier rebrand. Both variants
@@ -47,7 +50,7 @@ export const LEGACY_MODEL_ID_MAP: Record<string, SelectedModel> = {
   // HackerAI-era tier names — rebranded to Umbraa
   "hackerai-standard": "umbraa-standard",
   "hackerai-pro": "umbraa-pro",
-  "hackerai-max": "umbraa-max",
+  "hackerai-max": "umbraa-owl",
 };
 
 /**
