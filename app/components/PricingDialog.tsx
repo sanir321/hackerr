@@ -407,14 +407,14 @@ const PricingDialog: React.FC<PricingDialogProps> = ({ isOpen, onClose }) => {
                   price={isYearly ? 21 : 25}
                   description="More access to advanced intelligence"
                   features={proFeatures}
-                  buttonText="Upgrade"
+                  buttonText={proButtonConfig.text}
                   buttonVariant="default"
-                  buttonClassName="font-semibold"
-                  onButtonClick={() => {
+                  buttonClassName={proButtonConfig.className}
+                  onButtonClick={subscription === "pro" ? undefined : () => {
                     const plan = isYearly ? "pro-yearly-plan" : "pro-monthly-plan";
                     handleUpgradeClick(plan, "Pro", isYearly ? 21 : 25);
                   }}
-                  isButtonDisabled={upgradeLoading}
+                  isButtonDisabled={proButtonConfig.disabled}
                   isButtonLoading={upgradeLoading && pendingUpgrade?.planName === "Pro"}
                   customClassName="border-[#CFCEFC] bg-[#F5F5FF] dark:bg-[#282841] dark:border-[#484777]"
                   badgeText="POPULAR"
@@ -434,15 +434,15 @@ const PricingDialog: React.FC<PricingDialogProps> = ({ isOpen, onClose }) => {
                       ? proPlusFeatures
                       : ultraFeatures
                   }
-                  buttonText="Upgrade"
+                  buttonText={premiumButtonConfig.text}
                   buttonVariant="default"
-                  buttonClassName=""
-                  onButtonClick={() => {
+                  buttonClassName={premiumButtonConfig.className}
+                  onButtonClick={subscription === selectedPremiumPlan ? undefined : () => {
                     const planName = selectedPremiumPlan === "pro-plus" ? "Pro+" : "Ultra";
                     const plan = (isYearly ? `${selectedPremiumPlan}-yearly-plan` : `${selectedPremiumPlan}-monthly-plan`) as "pro-plus-monthly-plan" | "pro-plus-yearly-plan" | "ultra-monthly-plan" | "ultra-yearly-plan";
                     handleUpgradeClick(plan, planName, premiumPlanPrice);
                   }}
-                  isButtonDisabled={upgradeLoading}
+                  isButtonDisabled={premiumButtonConfig.disabled}
                   isButtonLoading={upgradeLoading && pendingUpgrade?.planName === (selectedPremiumPlan === "pro-plus" ? "Pro+" : "Ultra")}
                   footerNote={
                     selectedPremiumPlan === "ultra"

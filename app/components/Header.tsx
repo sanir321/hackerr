@@ -6,8 +6,6 @@ import { UmbraaSVG } from "@/components/icons/umbraa-svg";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
 
-import { Download } from "lucide-react";
-
 interface HeaderProps {
   chatTitle?: string;
   hideDownload?: boolean;

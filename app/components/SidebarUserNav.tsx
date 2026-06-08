@@ -241,7 +241,6 @@ const SidebarUserNav = ({ isCollapsed = false }: { isCollapsed?: boolean }) => {
   const { user } = useAuth();
   const { subscription } = useGlobalState();
   const isMobile = useIsMobile();
-  const isStandalone = useIsStandalone();
   const [referralDialogOpen, setReferralDialogOpen] = useState(false);
 
   if (!user) return null;

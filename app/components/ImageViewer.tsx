@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Download, ZoomIn, ZoomOut } from "lucide-react";
+import { ZoomIn, ZoomOut } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 
 interface ImageViewerProps {
