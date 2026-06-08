@@ -122,6 +122,7 @@ export const createChatHandler = () => {
     let preemptiveTimeout:
       | ReturnType<typeof createPreemptiveTimeout>
       | undefined;
+    let agentFirstTokenTimer: ReturnType<typeof setTimeout> | undefined;
 
     // Track usage deductions for refund on error
     const usageRefundTracker = new UsageRefundTracker();
@@ -201,7 +202,7 @@ export const createChatHandler = () => {
       });
 
       // Pre-emptive abort fires before Vercel's hard request timeout so we
-      // can flush logs and refund usage; agent mode uses elapsedTimeExceeds.
+      // can flush logs and refund usage; agent mode uses a first-token timeout.
       const userStopSignal = new AbortController();
       if (!isAgentMode(mode)) {
         preemptiveTimeout = createPreemptiveTimeout({
@@ -209,6 +210,27 @@ export const createChatHandler = () => {
           endpoint,
           abortController: userStopSignal,
         });
+      }
+
+      // Agent mode: abort if no first token within 60s (provider hung or unreachable)
+      if (isAgentMode(mode)) {
+        agentFirstTokenTimer = setTimeout(() => {
+          if (!userStopSignal.signal.aborted) {
+            console.error(
+              JSON.stringify({
+                level: "error",
+                event: "agent_first_token_timeout",
+                service: "chat-handler",
+                timestamp: new Date().toISOString(),
+                chat_id: chatId,
+                user_id: userId,
+                mode,
+                timeout_ms: 60_000,
+              }),
+            );
+            userStopSignal.abort();
+          }
+        }, 60_000);
       }
 
       // Parallel block 1: independent DB/Redis calls that share no dependencies
@@ -733,6 +755,11 @@ export const createChatHandler = () => {
             let result;
             try {
               result = await createStream(selectedModel);
+              // Stream started — cancel the first-token timeout
+              if (agentFirstTokenTimer) {
+                clearTimeout(agentFirstTokenTimer);
+                agentFirstTokenTimer = undefined;
+              }
             } catch (error) {
               // If provider returns error (e.g., INVALID_ARGUMENT from Gemini), retry with fallback.
               if (
@@ -753,6 +780,10 @@ export const createChatHandler = () => {
                 // is preserved.
                 usageTracker.resetModelLeg();
                 result = await createStream(fallbackModel);
+                if (agentFirstTokenTimer) {
+                  clearTimeout(agentFirstTokenTimer);
+                  agentFirstTokenTimer = undefined;
+                }
               } else {
                 throw error;
               }
@@ -792,6 +823,20 @@ export const createChatHandler = () => {
                       lastAssistantMessage.parts[0]?.type === "step-start";
 
                     if (hasOnlyStepStart) {
+                      console.info(
+                        JSON.stringify({
+                          level: "info",
+                          event: "model_empty_response",
+                          service: "chat-handler",
+                          timestamp: new Date().toISOString(),
+                          chat_id: chatId,
+                          user_id: userId,
+                          mode,
+                          model: state.responseModel || configuredModelId,
+                          is_retry: isRetryWithFallback,
+                          is_aborted: isAborted,
+                        }),
+                      );
                       // Retry with fallback model if not already retrying (only for auto models)
                       if (!isRetryWithFallback && !isAborted && isAutoModel) {
                         isRetryWithFallback = true;
@@ -1352,6 +1397,10 @@ export const createChatHandler = () => {
     } catch (error) {
       // Clear timeout if error occurs before onFinish
       preemptiveTimeout?.clear();
+      if (agentFirstTokenTimer) {
+        clearTimeout(agentFirstTokenTimer);
+        agentFirstTokenTimer = undefined;
+      }
       await releaseFreeRunLockOnce();
 
       // Best-effort PTY cleanup — the stream may never have reached onFinish.

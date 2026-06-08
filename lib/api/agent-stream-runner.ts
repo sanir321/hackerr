@@ -550,6 +550,8 @@ export async function createAgentStream(
       if (!ctx.usageTracker.hasUsage) {
         await ctx.usageRefundTracker.refund();
       }
+      // Abort the stream on provider error so it doesn't hang forever
+      ctx.abortController.abort();
       await ptySessionManager
         .closeAll(ctx.chatId)
         .catch((err) =>
