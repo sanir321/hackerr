@@ -20,7 +20,6 @@ export const useUpgrade = () => {
     _quantity?: number,
     _currentSubscription?: "free" | "pro" | "pro-plus" | "ultra" | "team",
     organizationName?: string,
-    method: "email" | "whatsapp" = "whatsapp", // Default to WhatsApp for better reliability
   ) => {
     e?.preventDefault();
 
@@ -50,37 +49,15 @@ export const useUpgrade = () => {
 
     setUpgradeLoading(false);
 
-    if (method === "email") {
-      const email = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@example.com";
-      const subject = encodeURIComponent(
-        `Upgrade request: ${isTeamPlan ? "TEAM - " : ""}${user.email ?? user.id}`,
-      );
-      const body = encodeURIComponent(bodyText);
-      const mailtoUrl = `mailto:${email}?subject=${subject}&body=${body}`;
+    const phone = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || "917904721312"; 
+    const text = encodeURIComponent(`*Upgrade Request*\n\n${bodyText}`);
+    const whatsappUrl = `https://wa.me/${phone}?text=${text}`;
 
-      window.location.href = mailtoUrl;
+    window.location.href = whatsappUrl;
 
-      toast.success("Opening your email client...", {
-        description: "If your email app didn't open, click 'Retry' below.",
-        action: {
-          label: "Retry",
-          onClick: () => {
-            window.location.href = mailtoUrl;
-          },
-        },
-        duration: 6000,
-      });
-    } else {
-      const phone = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || "919000000000"; 
-      const text = encodeURIComponent(`*Upgrade Request*\n\n${bodyText}`);
-      const whatsappUrl = `https://wa.me/${phone}?text=${text}`;
-
-      window.location.href = whatsappUrl;
-
-      toast.success("Opening WhatsApp...", {
-        description: "Please send the pre-filled message to the admin.",
-      });
-    }
+    toast.success("Opening WhatsApp...", {
+      description: "Please send the pre-filled message to the admin.",
+    });
   };
 
   return {

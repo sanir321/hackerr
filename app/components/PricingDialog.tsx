@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
-import { Loader2, X, MessageCircle, Mail } from "lucide-react";
+import { Loader2, X, MessageCircle } from "lucide-react";
 import { useGlobalState } from "../contexts/GlobalState";
 import { useUpgrade } from "../hooks/useUpgrade";
 import {
@@ -24,20 +24,20 @@ interface PricingDialogProps {
   onClose: () => void;
 }
 
-interface PlanCardProps {
-  planName: string;
-  price: number;
-  description: string;
-  features: Array<{
-    icon: React.ComponentType<{ className?: string }>;
-    text: string;
-  }>;
-  buttonText: string;
-  buttonVariant?: "default" | "secondary";
-  buttonClassName?: string;
-  onButtonClick?: (method: "email" | "whatsapp") => void;
-  isButtonDisabled?: boolean;
-  isButtonLoading?: boolean;
+  interface PlanCardProps {
+    planName: string;
+    price: number;
+    description: string;
+    features: Array<{
+      icon: React.ComponentType<{ className?: string }>;
+      text: string;
+    }>;
+    buttonText: string;
+    buttonVariant?: "default" | "secondary";
+    buttonClassName?: string;
+    onButtonClick?: () => void;
+    isButtonDisabled?: boolean;
+    isButtonLoading?: boolean;
   customClassName?: string;
   badgeText?: string;
   badgeClassName?: string;
@@ -107,32 +107,20 @@ const PlanCard: React.FC<PlanCardProps> = ({
 
       <div className="mb-2.5 w-full flex flex-col gap-2">
         {onButtonClick ? (
-          <>
-            <Button
-              onClick={() => onButtonClick("whatsapp")}
-              disabled={isButtonDisabled}
-              className={`w-full rounded-xl bg-[#25D366] hover:bg-[#20bd56] text-white ${buttonClassName}`}
-              variant="default"
-              size="lg"
-            >
-              {isButtonLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <MessageCircle className="mr-2 h-4 w-4 fill-current" />
-              )}
-              {isButtonLoading ? "Redirecting..." : `Chat to ${buttonText}`}
-            </Button>
-            <Button
-              onClick={() => onButtonClick("email")}
-              disabled={isButtonDisabled}
-              className={`w-full rounded-xl ${buttonClassName}`}
-              variant="outline"
-              size="sm"
-            >
-              <Mail className="mr-2 h-3.5 w-3.5" />
-              Email request
-            </Button>
-          </>
+          <Button
+            onClick={onButtonClick}
+            disabled={isButtonDisabled}
+            className={`w-full rounded-xl bg-[#25D366] hover:bg-[#20bd56] text-white ${buttonClassName}`}
+            variant="default"
+            size="lg"
+          >
+            {isButtonLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <MessageCircle className="mr-2 h-4 w-4 fill-current" />
+            )}
+            {isButtonLoading ? "Redirecting..." : `Chat to ${buttonText}`}
+          </Button>
         ) : (
           <Button
             disabled={isButtonDisabled}
@@ -170,7 +158,6 @@ const PlanCard: React.FC<PlanCardProps> = ({
 };
 
 type PremiumPlan = "pro-plus" | "ultra";
-type UpgradeMethod = "email" | "whatsapp";
 
 interface PremiumPlanSelectorProps {
   value: PremiumPlan;
@@ -230,7 +217,6 @@ const PricingDialog: React.FC<PricingDialogProps> = ({ isOpen, onClose }) => {
     plan: string;
     planName: string;
     price: number;
-    method?: UpgradeMethod;
   } | null>(null);
 
   // Auto-close pricing dialog for ultra/team users (pro-plus can still upgrade to ultra)
@@ -262,16 +248,15 @@ const PricingDialog: React.FC<PricingDialogProps> = ({ isOpen, onClose }) => {
       | "ultra-yearly-plan",
     planName: string,
     price: number,
-    method: UpgradeMethod = "whatsapp",
   ) => {
     if (subscription !== "free") {
-      setPendingUpgrade({ plan, planName, price, method });
+      setPendingUpgrade({ plan, planName, price });
       setShowConfirmDialog(true);
       return;
     }
 
     try {
-      await handleUpgrade(plan, undefined, undefined, subscription, undefined, method);
+      await handleUpgrade(plan, undefined, undefined, subscription);
     } catch (error) {
       console.error("Upgrade failed:", error);
     }
@@ -284,9 +269,7 @@ const PricingDialog: React.FC<PricingDialogProps> = ({ isOpen, onClose }) => {
         pendingUpgrade.plan as any, 
         undefined, 
         undefined, 
-        subscription, 
-        undefined, 
-        pendingUpgrade.method || "whatsapp"
+        subscription
       );
       setShowConfirmDialog(false);
     } catch (error) {
@@ -429,9 +412,9 @@ const PricingDialog: React.FC<PricingDialogProps> = ({ isOpen, onClose }) => {
                   buttonText="Upgrade"
                   buttonVariant="default"
                   buttonClassName="font-semibold"
-                  onButtonClick={(method) => {
+                  onButtonClick={() => {
                     const plan = isYearly ? "pro-yearly-plan" : "pro-monthly-plan";
-                    handleUpgradeClick(plan, "Pro", isYearly ? 21 : 25, method);
+                    handleUpgradeClick(plan, "Pro", isYearly ? 21 : 25);
                   }}
                   isButtonDisabled={upgradeLoading}
                   isButtonLoading={upgradeLoading && pendingUpgrade?.planName === "Pro"}
@@ -456,10 +439,10 @@ const PricingDialog: React.FC<PricingDialogProps> = ({ isOpen, onClose }) => {
                   buttonText="Upgrade"
                   buttonVariant="default"
                   buttonClassName=""
-                  onButtonClick={(method) => {
+                  onButtonClick={() => {
                     const planName = selectedPremiumPlan === "pro-plus" ? "Pro+" : "Ultra";
                     const plan = (isYearly ? `${selectedPremiumPlan}-yearly-plan` : `${selectedPremiumPlan}-monthly-plan`) as "pro-plus-monthly-plan" | "pro-plus-yearly-plan" | "ultra-monthly-plan" | "ultra-yearly-plan";
-                    handleUpgradeClick(plan, planName, premiumPlanPrice, method);
+                    handleUpgradeClick(plan, planName, premiumPlanPrice);
                   }}
                   isButtonDisabled={upgradeLoading}
                   isButtonLoading={upgradeLoading && pendingUpgrade?.planName === (selectedPremiumPlan === "pro-plus" ? "Pro+" : "Ultra")}
@@ -487,6 +470,16 @@ const PricingDialog: React.FC<PricingDialogProps> = ({ isOpen, onClose }) => {
             >
               {showTeamPlan ? "View Individual Plan" : "View Team Plan"}
             </Button>
+          </div>
+
+          <div className="flex justify-center pb-10 text-sm text-muted-foreground">
+            Questions?{" "}
+            <button
+              onClick={() => window.open("https://wa.me/" + (process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || "917904721312"), "_blank")}
+              className="ml-1 font-medium text-foreground underline underline-offset-2 hover:opacity-70"
+            >
+              Chat with us
+            </button>
           </div>
         </DialogContent>
       </Dialog>
