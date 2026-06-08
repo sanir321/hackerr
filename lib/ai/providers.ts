@@ -184,14 +184,15 @@ const buildProviderMap = (gateway: ReturnType<typeof createOpenAI>) => {
   return {
     "ask-model": auto,
     "ask-model-free": auto,
-    "agent-model": auto,
-    "agent-model-free": auto,
+    // Agent mode requires tool-calling capable models — never use auto-router
+    "agent-model": pro,
+    "agent-model-free": pro,
     "model-sonnet-4.6": pro,
     "model-gemini-3-flash": auto,
     "model-deepseek-v4-flash": auto,
     "model-opus-4.6": max,
     "model-kimi-k2.6": pro,
-    "fallback-agent-model": auto,
+    "fallback-agent-model": pro,
     "fallback-ask-model": auto,
     "fallback-gemini-3.5-flash": auto,
     "fallback-grok-4.3": auto,
