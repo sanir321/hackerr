@@ -180,10 +180,6 @@ const buildProviderMap = (gateway: ReturnType<typeof createOpenAI>) => {
   const pro = gateway("qwen/qwen3.7-plus:free");
   const max = gateway("nvidia/nemotron-3-super-120b-a12b:free");
   const auto = gateway("kilo-auto/free");
-  const coder = gateway("qwen/qwen3-coder:free");
-  const gptOss = gateway("openai/gpt-oss-120b:free");
-  const llama4 = gateway("meta-llama/llama-4-maverick:free");
-  const deepseek = gateway("deepseek/deepseek-v4-flash:free");
 
   return {
     "ask-model": auto,
@@ -192,11 +188,9 @@ const buildProviderMap = (gateway: ReturnType<typeof createOpenAI>) => {
     "agent-model-free": auto,
     "model-sonnet-4.6": pro,
     "model-gemini-3-flash": auto,
-    "model-deepseek-v4-flash": deepseek,
-    "model-opus-4.6": gptOss,
+    "model-deepseek-v4-flash": auto,
+    "model-opus-4.6": max,
     "model-kimi-k2.6": pro,
-    "model-llama-4": llama4,
-    "model-qwen-coder": coder,
     "fallback-agent-model": auto,
     "fallback-ask-model": auto,
     "fallback-gemini-3.5-flash": auto,
@@ -311,12 +305,6 @@ export function resolveTierToProviderKey(
       return "model-sonnet-4.6";
     case "umbraa-max":
       return "model-opus-4.6";
-    case "umbraa-coder":
-      return "model-qwen-coder";
-    case "umbraa-gpt-oss":
-      return "model-opus-4.6"; // Reuse GPT-OSS mapping
-    case "umbraa-llama":
-      return "model-llama-4";
     default:
       return "model-deepseek-v4-flash";
   }
