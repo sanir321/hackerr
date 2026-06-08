@@ -11,6 +11,7 @@ import { onOpenSettingsDialog } from "@/lib/utils/settings-dialog";
 import PricingDialog from "./PricingDialog";
 import TeamPricingDialog from "./TeamPricingDialog";
 import { usePricingDialog } from "../hooks/usePricingDialog";
+import { useAuth } from "@workos-inc/authkit-nextjs/components";
 
 /**
  * Shared layout for chat routes: Chat Sidebar (left) + main content slot.
@@ -18,6 +19,7 @@ import { usePricingDialog } from "../hooks/usePricingDialog";
  * Does NOT include the Computer Sidebar (right); that remains in ChatContent.
  */
 export function ChatLayout({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const isMobile = useIsMobile();
   const {
     chatSidebarOpen,
@@ -133,7 +135,7 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-0 flex-1 w-full overflow-hidden">
       {/* Chat Sidebar - Desktop: only mount once isMobile is resolved to avoid flash on mobile */}
-      {isMobile === false && (
+      {user && isMobile === false && (
         <div
           data-testid="sidebar"
           className={`relative z-10 min-w-0 shrink-0 overflow-hidden bg-sidebar transition-all duration-300 ${
@@ -156,7 +158,7 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Overlay Chat Sidebar - Mobile: only when resolved to mobile */}
-      {isMobile === true && chatSidebarOpen && (
+      {user && isMobile === true && chatSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 flex"
           onClick={() => setChatSidebarOpen(false)}
