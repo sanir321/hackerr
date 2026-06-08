@@ -18,7 +18,6 @@ import { Save, ShieldAlert, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { useGlobalState } from "@/app/contexts/GlobalState";
 import type { QueueBehavior, SandboxPreference } from "@/types/chat";
-import { SandboxSelector } from "@/app/components/SandboxSelector";
 import {
   type GuardrailConfigUI,
   getDefaultGuardrailsUI,
@@ -128,25 +127,7 @@ const AgentsTab = () => {
 
   return (
     <div className="space-y-6">
-      {/* Execution Environment - Available to all users */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 border-b gap-3">
-          <div className="flex-1">
-            <div className="font-medium">Default execution environment</div>
-            <div className="text-sm text-muted-foreground">
-              Choose the default sandbox environment for Agent mode
-            </div>
-          </div>
-          <div className="w-full sm:w-auto">
-            <SandboxSelector
-              value={sandboxPreference}
-              onChange={(v) => setSandboxPreference(v as SandboxPreference)}
-              disabled={false}
-              size="md"
-            />
-          </div>
-        </div>
-      </div>
+      {/* Execution Environment - Removed to enforce E2B */}
 
       <div className="space-y-4">
         <div className="flex items-center justify-between py-3 border-b">

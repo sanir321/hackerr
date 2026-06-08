@@ -741,23 +741,13 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     if (storedSandboxType === "e2b") {
       setSandboxPreference("e2b");
       hasInitializedSandboxRef.current = true;
-
-    } else if (localConnections !== undefined) {
-      // For remote connectionIds, validate the connection still exists
-      const connectionExists = localConnections.some(
-        (conn) => conn.connectionId === storedSandboxType,
-      );
-      if (connectionExists) {
-        setSandboxPreference(storedSandboxType as unknown as SandboxPreference);
-      } else {
-        // Stale connection — fall back to cloud
-        setSandboxPreference("e2b");
-      }
+    } else {
+      // Stale connection — fall back to cloud
+      setSandboxPreference("e2b");
       hasInitializedSandboxRef.current = true;
     }
-    // If localConnections is still loading (undefined), wait for next render
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatData, localConnections, isExistingChat, chatId]);
+  }, [chatData, isExistingChat, chatId]);
 
   // Initialize model selection from chat data
   useEffect(() => {

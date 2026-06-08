@@ -31,7 +31,6 @@ import {
 import type { UploadedFileState } from "@/types/file";
 import type { FileMessagePart } from "@/types/file";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useSandboxPreference } from "@/app/hooks/useSandboxPreference";
 
 import { chatSidebarStorage } from "@/lib/utils/sidebar-storage";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -336,18 +335,10 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
     return "queue"; // Default: queue after current message completes
   });
 
-  // Sandbox preference (co-located in a custom hook)
-  const { sandboxPreference, setSandboxPreference } =
-    useSandboxPreference(!!user);
-
-  // Check for available local sandbox connections
-  const localConnections = useQuery(api.localSandbox.listConnections);
-
-  const defaultLocalSandboxPreference = useMemo<string | null>(() => {
-    const firstConnection = localConnections?.[0];
-    if (firstConnection) return firstConnection.connectionId;
-    return null;
-  }, [localConnections]);
+  // Sandbox preference (always E2B now)
+  const sandboxPreference = "e2b" as SandboxPreference;
+  const setSandboxPreference = () => {};
+  const defaultLocalSandboxPreference = null;
 
   // Persist queue behavior to localStorage
   useEffect(() => {
