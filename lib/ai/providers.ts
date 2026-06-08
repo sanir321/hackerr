@@ -311,6 +311,12 @@ export function resolveTierToProviderKey(
       return "model-sonnet-4.6";
     case "umbraa-max":
       return "model-opus-4.6";
+    case "umbraa-coder":
+      return "model-qwen-coder";
+    case "umbraa-gpt-oss":
+      return "model-opus-4.6"; // Reuse GPT-OSS mapping
+    case "umbraa-llama":
+      return "model-llama-4";
     default:
       return "model-deepseek-v4-flash";
   }

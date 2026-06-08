@@ -30,6 +30,24 @@ export const ASK_MODEL_OPTIONS: ModelOption[] = [
     description: "Maximum intelligence for hard problems",
     poweredBy: "Kilo Gateway (free)",
   },
+  {
+    id: "umbraa-coder",
+    label: "Qwen 3 Coder",
+    description: "Specialized in programming tasks",
+    poweredBy: "Kilo Gateway (free)",
+  },
+  {
+    id: "umbraa-gpt-oss",
+    label: "GPT-OSS 120B",
+    description: "Massive open-source intelligence",
+    poweredBy: "Kilo Gateway (free)",
+  },
+  {
+    id: "umbraa-llama",
+    label: "Llama 4 Maverick",
+    description: "Latest Meta open-source model",
+    poweredBy: "Kilo Gateway (free)",
+  },
 ];
 
 export const AGENT_MODEL_OPTIONS: ModelOption[] = [
@@ -51,6 +69,27 @@ export const AGENT_MODEL_OPTIONS: ModelOption[] = [
     id: "umbraa-max",
     label: "Nemotron 3 Super 120B",
     description: "Maximum agent intelligence",
+    poweredBy: "Kilo Gateway (free)",
+    thinking: true,
+  },
+  {
+    id: "umbraa-coder",
+    label: "Qwen 3 Coder",
+    description: "Specialized coding agent",
+    poweredBy: "Kilo Gateway (free)",
+    thinking: true,
+  },
+  {
+    id: "umbraa-gpt-oss",
+    label: "GPT-OSS 120B",
+    description: "Massive intelligence agent",
+    poweredBy: "Kilo Gateway (free)",
+    thinking: true,
+  },
+  {
+    id: "umbraa-llama",
+    label: "Llama 4 Maverick",
+    description: "Llama-powered agent",
     poweredBy: "Kilo Gateway (free)",
     thinking: true,
   },

@@ -15,13 +15,19 @@ export type SelectedModel =
   | "auto"
   | "umbraa-standard"
   | "umbraa-pro"
-  | "umbraa-max";
+  | "umbraa-max"
+  | "umbraa-coder"
+  | "umbraa-gpt-oss"
+  | "umbraa-llama";
 
 export const SELECTABLE_MODELS: readonly SelectedModel[] = [
   "auto",
   "umbraa-standard",
   "umbraa-pro",
   "umbraa-max",
+  "umbraa-coder",
+  "umbraa-gpt-oss",
+  "umbraa-llama",
 ];
 
 /**
