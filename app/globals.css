@@ -249,7 +249,7 @@
 }
 
 .worked-for-content[data-state="open"] {
-  animation: worked-for-content-open 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation: worked-for-content-open 80ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .worked-for-content[data-state="closed"] {

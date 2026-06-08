@@ -451,7 +451,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
   } = useChat({
     id: chatId,
     messages: serverMessages,
-    experimental_throttle: 150,
+    experimental_throttle: 0,
     generateId: () => uuidv4(),
 
     transport: transportRef.current,

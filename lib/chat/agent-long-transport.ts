@@ -157,7 +157,7 @@ const buildSSEResponseFromRun = (
           // We buffer consecutive delta chunks and flush them as a single
           // merged chunk, reducing ~9k events to a few hundred.
           const DELTA_FLUSH_COUNT = 50; // flush after this many buffered deltas
-          const DELTA_FLUSH_MS = 30; // or after this many ms (live streaming)
+          const DELTA_FLUSH_MS = 10; // or after this many ms (live streaming)
 
           type DeltaBatch = {
             type: "text-delta" | "reasoning-delta";
