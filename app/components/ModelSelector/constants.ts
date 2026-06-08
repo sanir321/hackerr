@@ -16,19 +16,16 @@ export const ASK_MODEL_OPTIONS: ModelOption[] = [
     id: "umbraa-standard",
     label: "DeepSeek V4 Flash",
     description: "Fast and efficient for everyday tasks",
-    poweredBy: "Kilo Gateway (free)",
   },
   {
     id: "umbraa-pro",
     label: "Qwen 3.7 Plus",
     description: "Superior performance for complex work",
-    poweredBy: "Kilo Gateway (free)",
   },
   {
     id: "umbraa-max",
     label: "Nemotron 3 Super 120B",
     description: "Maximum intelligence for hard problems",
-    poweredBy: "Kilo Gateway (free)",
   },
 ];
 
@@ -37,21 +34,18 @@ export const AGENT_MODEL_OPTIONS: ModelOption[] = [
     id: "umbraa-standard",
     label: "DeepSeek V4 Flash",
     description: "Fast and efficient agent",
-    poweredBy: "Kilo Gateway (free)",
     thinking: true,
   },
   {
     id: "umbraa-pro",
     label: "Qwen 3.7 Plus",
     description: "Superior agent performance",
-    poweredBy: "Kilo Gateway (free)",
     thinking: true,
   },
   {
     id: "umbraa-max",
     label: "Nemotron 3 Super 120B",
     description: "Maximum agent intelligence",
-    poweredBy: "Kilo Gateway (free)",
     thinking: true,
   },
 ];
