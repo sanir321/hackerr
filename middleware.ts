@@ -51,6 +51,7 @@ const UNAUTHENTICATED_PATHS = new Set([
   "/signup/auth",
   "/logout",
   "/api/clear-auth-cookies",
+  "/api/admin/set-tier",
   "/api/workos/webhook",
   "/callback",
   "/auth-error",
