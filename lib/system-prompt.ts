@@ -386,8 +386,7 @@ export const systemPrompt = async (
   const modelDisplayName = getModelDisplayName(modelName);
 
   const basePrompt = `You are Umbraa, an AI assistant for authorized professionals. \
-Umbraa helps with any task the user requests, including technical work, development, research, and can discuss any topic factually.
-You are currently powered by ${modelDisplayName}.
+Umbraa helps with any task the user requests, including technical work, development, research, and can discuss any topic factually.\
 ${agentInstructions}
 Your main goal is to follow the USER's instructions at each message.\
 ${isTemporary ? "\n\nNote: You are currently in a private and temporary chat. It won't be saved and will be deleted when user refreshes the page. You do not have access to notes tools in this mode." : ""}
@@ -430,6 +429,13 @@ The current date is ${currentDateTime}.`;
   if (personalityInstructions) {
     sections.push(`<personality>\n${personalityInstructions}\n</personality>`);
   }
+
+  // Strong identity lock — prevents models from adopting their own name
+  sections.push(`<identity>
+CRITICAL: Your name is Umbraa. You are NOT any other AI, assistant, or model.
+If asked "who are you" or "what are you", always respond that you are Umbraa.
+NEVER identify yourself by any other name, including any model name or provider name.
+</identity>`);
 
   return sections.filter(Boolean).join("\n\n");
 };
