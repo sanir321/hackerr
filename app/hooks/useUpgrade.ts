@@ -45,18 +45,15 @@ export const useUpgrade = () => {
       }
     }
 
-    bodyText += `\nTo upgrade, run:\ncurl -X POST https://umbraa.ai/api/admin/set-tier \\\n  -H "x-api-key: YOUR_ADMIN_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"userId":"${user.id}","tier":"${_planKey?.split("-")[0] || "pro"}"}'`;
-
     setUpgradeLoading(false);
 
-    const phone = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || "917904721312"; 
-    const text = encodeURIComponent(`*Upgrade Request*\n\n${bodyText}`);
-    const whatsappUrl = `https://wa.me/${phone}?text=${text}`;
+    const phone = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || "917904721312";
+    const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(`*Upgrade Request*\n\n${bodyText}`)}`;
 
     window.location.href = whatsappUrl;
 
     toast.success("Opening WhatsApp...", {
-      description: "Please send the pre-filled message to the admin.",
+      description: "Please send the message to the admin.",
     });
   };
 
