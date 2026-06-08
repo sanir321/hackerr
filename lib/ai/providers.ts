@@ -178,7 +178,7 @@ const buildProviderMap = (gateway: ReturnType<typeof createOpenAI>) => {
   // SaaS mode: Always route all models through Kilo Gateway/OpenRouter free models
   const standard = gateway("kilo-auto/free");
   const pro = gateway("qwen/qwen3.7-plus:free");
-  const max = gateway("nvidia/nemotron-3-super:free");
+  const max = gateway("nvidia/nemotron-3-super-120b-a12b:free");
   const auto = gateway("kilo-auto/free");
   const coder = gateway("qwen/qwen3-coder:free");
   const gptOss = gateway("openai/gpt-oss-120b:free");
