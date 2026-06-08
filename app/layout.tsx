@@ -32,7 +32,6 @@ export const metadata: Metadata = {
     template: "%s",
   },
   description: APP_DESCRIPTION,
-  manifest: "/manifest.json",
   keywords: [
     "umbraa",
     "pentestgpt",
@@ -60,14 +59,6 @@ export const metadata: Metadata = {
       template: APP_TITLE_TEMPLATE,
     },
     description: APP_DESCRIPTION,
-    images: [
-      {
-        url: "https://umbraa.ai/icon-512x512.png",
-        width: 512,
-        height: 512,
-        alt: "Umbraa",
-      },
-    ],
   },
   twitter: {
     card: "summary",
@@ -76,14 +67,6 @@ export const metadata: Metadata = {
       template: APP_TITLE_TEMPLATE,
     },
     description: APP_DESCRIPTION,
-    images: [
-      {
-        url: "https://umbraa.ai/icon-512x512.png",
-        width: 512,
-        height: 512,
-        alt: "Umbraa",
-      },
-    ],
   },
 };
 
@@ -112,7 +95,6 @@ export default function RootLayout({
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}
