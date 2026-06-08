@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { X, Minus, Plus, Loader2 } from "lucide-react";
+import { X, Minus, Plus, Loader2, MessageCircle, Mail } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,7 +68,7 @@ const TeamPricingDialog: React.FC<TeamPricingDialogProps> = ({
   const discount = billingPeriod === "yearly" ? fullPrice - seats * 33 * 12 : 0;
   const discountPercentage = 17;
 
-  const handleContinue = async () => {
+  const handleContinue = async (method: "email" | "whatsapp" = "whatsapp") => {
     if (!user) {
       toast.error("Please sign in to upgrade");
       return;
@@ -90,7 +90,7 @@ const TeamPricingDialog: React.FC<TeamPricingDialogProps> = ({
     }
 
     // For free users: proceed to checkout
-    await handleUpgrade(planKey, undefined, seats, subscription, organizationName);
+    await handleUpgrade(planKey, undefined, seats, subscription, organizationName, method);
   };
 
   const handleCloseConfirmation = () => {
@@ -356,9 +356,9 @@ const TeamPricingDialog: React.FC<TeamPricingDialogProps> = ({
 
                   <div className="flex flex-col gap-3 pb-10">
                     <Button
-                      onClick={handleContinue}
+                      onClick={() => handleContinue("whatsapp")}
                       disabled={upgradeLoading}
-                      className="w-full rounded-xl bg-[#10A37F] hover:bg-[#0d8f6f] text-white"
+                      className="w-full rounded-xl bg-[#25D366] hover:bg-[#20bd56] text-white"
                       size="lg"
                     >
                       {upgradeLoading ? (
@@ -367,8 +367,21 @@ const TeamPricingDialog: React.FC<TeamPricingDialogProps> = ({
                           Processing...
                         </>
                       ) : (
-                        "Continue to billing"
+                        <>
+                          <MessageCircle className="mr-2 h-5 w-5 fill-current" />
+                          Chat to upgrade
+                        </>
                       )}
+                    </Button>
+                    <Button
+                      onClick={() => handleContinue("email")}
+                      disabled={upgradeLoading}
+                      className="w-full rounded-xl"
+                      variant="outline"
+                      size="lg"
+                    >
+                      <Mail className="mr-2 h-5 w-5" />
+                      Email request
                     </Button>
                     <Button
                       variant="ghost"
@@ -601,31 +614,45 @@ const TeamPricingDialog: React.FC<TeamPricingDialogProps> = ({
                     </div>
                   </div>
 
-                  <Button
-                    onClick={handleContinue}
-                    disabled={upgradeLoading}
-                    className="mt-8 w-full rounded-xl bg-[#10A37F] hover:bg-[#0d8f6f] text-white"
-                    size="lg"
-                  >
-                    {upgradeLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      "Continue to billing"
-                    )}
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    onClick={onClose}
-                    disabled={upgradeLoading}
-                    className="mt-4 w-full rounded-xl"
-                    size="lg"
-                  >
-                    Cancel
-                  </Button>
+                  <div className="flex flex-col gap-3 mt-8">
+                    <Button
+                      onClick={() => handleContinue("whatsapp")}
+                      disabled={upgradeLoading}
+                      className="w-full rounded-xl bg-[#25D366] hover:bg-[#20bd56] text-white"
+                      size="lg"
+                    >
+                      {upgradeLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <MessageCircle className="mr-2 h-5 w-5 fill-current" />
+                          Chat to upgrade
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => handleContinue("email")}
+                      disabled={upgradeLoading}
+                      className="w-full rounded-xl"
+                      variant="outline"
+                      size="lg"
+                    >
+                      <Mail className="mr-2 h-5 w-5" />
+                      Email request
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={onClose}
+                      disabled={upgradeLoading}
+                      className="w-full rounded-xl"
+                      size="lg"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
