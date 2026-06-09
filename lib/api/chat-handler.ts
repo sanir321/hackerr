@@ -123,6 +123,7 @@ export const createChatHandler = () => {
       | ReturnType<typeof createPreemptiveTimeout>
       | undefined;
     let agentFirstTokenTimer: ReturnType<typeof setTimeout> | undefined;
+    let agentKeepaliveTimer: ReturnType<typeof setInterval> | undefined;
 
     // Track usage deductions for refund on error
     const usageRefundTracker = new UsageRefundTracker();
@@ -202,15 +203,13 @@ export const createChatHandler = () => {
       });
 
       // Pre-emptive abort fires before Vercel's hard request timeout so we
-      // can flush logs and refund usage; agent mode uses a first-token timeout.
+      // can flush logs and refund usage. Used for both ask and agent modes.
       const userStopSignal = new AbortController();
-      if (!isAgentMode(mode)) {
-        preemptiveTimeout = createPreemptiveTimeout({
-          chatId,
-          endpoint,
-          abortController: userStopSignal,
-        });
-      }
+      preemptiveTimeout = createPreemptiveTimeout({
+        chatId,
+        endpoint,
+        abortController: userStopSignal,
+      });
 
       // Agent mode: abort if no first token within 60s (provider hung or unreachable)
       if (isAgentMode(mode)) {
@@ -521,6 +520,10 @@ export const createChatHandler = () => {
                 // onError and never reach the outer catch, so refund / timeout
                 // clear / error logging must happen here. refund() is idempotent.
                 preemptiveTimeout?.clear();
+                if (agentKeepaliveTimer) {
+                  clearInterval(agentKeepaliveTimer);
+                  agentKeepaliveTimer = undefined;
+                }
                 await usageRefundTracker.refund();
                 chatLogger?.emitChatError(uploadError);
                 throw uploadError;
@@ -760,6 +763,22 @@ export const createChatHandler = () => {
                 clearTimeout(agentFirstTokenTimer);
                 agentFirstTokenTimer = undefined;
               }
+              // Start keepalive for agent mode: send lightweight pings every 15s
+              // to prevent Vercel edge proxy from killing idle connections during
+              // long tool execution or LLM inference.
+              if (isAgentMode(mode) && !agentKeepaliveTimer) {
+                agentKeepaliveTimer = setInterval(() => {
+                  try {
+                    writer.write({ type: "data-keepalive", data: { t: Date.now() } });
+                  } catch {
+                    // Stream closed — stop pinging
+                    if (agentKeepaliveTimer) {
+                      clearInterval(agentKeepaliveTimer);
+                      agentKeepaliveTimer = undefined;
+                    }
+                  }
+                }, 15_000);
+              }
             } catch (error) {
               // If provider returns error (e.g., INVALID_ARGUMENT from Gemini), retry with fallback.
               if (
@@ -886,6 +905,10 @@ export const createChatHandler = () => {
                               try {
                                 // Cleanup for retry
                                 preemptiveTimeout?.clear();
+                                if (agentKeepaliveTimer) {
+                                  clearInterval(agentKeepaliveTimer);
+                                  agentKeepaliveTimer = undefined;
+                                }
                                 if (!subscriberStopped) {
                                   await cancellationSubscriber.stop();
                                   subscriberStopped = true;
@@ -1046,6 +1069,10 @@ export const createChatHandler = () => {
                     // Clear pre-emptive timeout
                     let stepStart = Date.now();
                     preemptiveTimeout?.clear();
+                    if (agentKeepaliveTimer) {
+                      clearInterval(agentKeepaliveTimer);
+                      agentKeepaliveTimer = undefined;
+                    }
                     logStep("clear_timeout", stepStart);
 
                     // Stop cancellation subscriber
@@ -1397,6 +1424,10 @@ export const createChatHandler = () => {
     } catch (error) {
       // Clear timeout if error occurs before onFinish
       preemptiveTimeout?.clear();
+      if (agentKeepaliveTimer) {
+        clearInterval(agentKeepaliveTimer);
+        agentKeepaliveTimer = undefined;
+      }
       if (agentFirstTokenTimer) {
         clearTimeout(agentFirstTokenTimer);
         agentFirstTokenTimer = undefined;

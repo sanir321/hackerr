@@ -20,7 +20,6 @@ import type * as fileAggregate from "../fileAggregate.js";
 import type * as fileStorage from "../fileStorage.js";
 import type * as lib_logger from "../lib/logger.js";
 import type * as lib_utils from "../lib/utils.js";
-import type * as localSandbox from "../localSandbox.js";
 import type * as manualSubscriptions from "../manualSubscriptions.js";
 import type * as messages from "../messages.js";
 import type * as notes from "../notes.js";
@@ -56,7 +55,6 @@ declare const fullApi: ApiFromModules<{
   fileStorage: typeof fileStorage;
   "lib/logger": typeof lib_logger;
   "lib/utils": typeof lib_utils;
-  localSandbox: typeof localSandbox;
   manualSubscriptions: typeof manualSubscriptions;
   messages: typeof messages;
   notes: typeof notes;

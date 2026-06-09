@@ -26,7 +26,9 @@ export function tokenExhaustedAfterSummarization(state: {
 }
 
 export const PREEMPTIVE_TIMEOUT_FINISH_REASON = "preemptive-timeout";
-export const AGENT_MAX_STREAM_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+// Must be well under Vercel's 300s hard limit to allow graceful cleanup.
+// 240s = 4 minutes leaves 60s for abort + log flush + usage refund.
+export const AGENT_MAX_STREAM_DURATION_MS = 4 * 60 * 1000;
 
 export function elapsedTimeExceeds(state: {
   maxDurationMs: number;
