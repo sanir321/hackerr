@@ -5,7 +5,7 @@ export function shouldUseAgentLongForAgent({
 }: {
   mode: ChatMode | string;
 }): boolean {
-  if (mode !== "agent") return false;
-
-  return true;
+  // Agent mode now runs directly on Vercel via /api/chat
+  // instead of Trigger.dev (no env vars configured there)
+  return false;
 }
