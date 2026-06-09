@@ -13,51 +13,59 @@ export interface ModelOption {
 
 export const ASK_MODEL_OPTIONS: ModelOption[] = [
   {
+    id: "umbraa-owl",
+    label: "Owl Alpha",
+    description: "Fast, 1M context window for long documents",
+    poweredBy: "OpenRouter",
+  },
+  {
     id: "umbraa-standard",
-    label: "DeepSeek V4 Flash",
-    description: "Fast and efficient for everyday tasks",
+    label: "Owl Alpha (Standard)",
+    description: "Reliable general-purpose model",
+    poweredBy: "OpenRouter",
   },
   {
     id: "umbraa-pro",
-    label: "Nemotron 3 Ultra 550B",
-    description: "Most powerful free model, 1M context",
-  },
-  {
-    id: "umbraa-owl",
-    label: "Owl Alpha",
-    description: "Massive 1M context window for long documents",
+    label: "Nex N2 Pro",
+    description: "Capable general-purpose model",
+    poweredBy: "Novita AI",
   },
   {
     id: "umbraa-reason",
-    label: "Nemotron 3 Nano Omni",
+    label: "Nemotron 3 Super (Reasoning)",
     description: "Built-in reasoning for complex problems",
+    poweredBy: "NVIDIA",
     thinking: true,
   },
 ];
 
 export const AGENT_MODEL_OPTIONS: ModelOption[] = [
   {
-    id: "umbraa-standard",
-    label: "DeepSeek V4 Flash",
-    description: "Fast and efficient agent",
-    thinking: true,
-  },
-  {
-    id: "umbraa-pro",
-    label: "Nemotron 3 Ultra 550B",
-    description: "Most powerful agent, 1M context",
+    id: "umbraa-reason",
+    label: "Nemotron 3 Super",
+    description: "Best for tool-calling agent tasks",
+    poweredBy: "NVIDIA",
     thinking: true,
   },
   {
     id: "umbraa-owl",
-    label: "Owl Alpha",
-    description: "Agent with massive 1M context",
+    label: "Owl Alpha (Agent)",
+    description: "Fast agent with 1M context",
+    poweredBy: "OpenRouter",
     thinking: true,
   },
   {
-    id: "umbraa-reason",
-    label: "Nemotron 3 Nano Omni",
-    description: "Reasoning agent for complex problems",
+    id: "umbraa-standard",
+    label: "Owl Alpha (Standard)",
+    description: "Reliable agent for general tasks",
+    poweredBy: "OpenRouter",
+    thinking: true,
+  },
+  {
+    id: "umbraa-pro",
+    label: "Nex N2 Pro (Agent)",
+    description: "Capable agent for complex tasks",
+    poweredBy: "Novita AI",
     thinking: true,
   },
 ];

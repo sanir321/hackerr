@@ -21,15 +21,15 @@ import { getSuspensionMessage } from "@/lib/suspensionMessage";
 /** Model pricing: $/1M tokens per model (all free on Kilo Gateway) */
 const MODEL_PRICING_MAP: Record<string, { input: number; output: number }> = {
   default: { input: 0.5, output: 3.0 },
-  "model-deepseek-v4-flash": { input: 0.05, output: 0.4 },
-  "model-nemotron-ultra": { input: 0.0, output: 0.0 },
+  "model-standard": { input: 0.0, output: 0.0 },
+  "model-pro": { input: 0.0, output: 0.0 },
   "model-owl-alpha": { input: 0.0, output: 0.0 },
   "model-reasoning": { input: 0.0, output: 0.0 },
   // Agent/auto models are free
   "agent-model": { input: 0.0, output: 0.0 },
   "agent-model-free": { input: 0.0, output: 0.0 },
-  "ask-model": { input: 0.05, output: 0.4 },
-  "ask-model-free": { input: 0.05, output: 0.4 },
+  "ask-model": { input: 0.0, output: 0.0 },
+  "ask-model-free": { input: 0.0, output: 0.0 },
 };
 
 const getModelPricing = (modelName?: string) =>

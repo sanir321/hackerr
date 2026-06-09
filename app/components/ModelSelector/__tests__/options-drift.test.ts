@@ -31,21 +31,21 @@ describe("ModelSelector tier ↔ provider drift", () => {
     expect([...askIds].sort()).toEqual([...agentIds].sort());
   });
 
-  it("Umbraa Standard resolves to deepseek-v4-flash in both modes", () => {
+  it("Umbraa Standard resolves to model-standard in both modes", () => {
     expect(resolveTierToProviderKey("umbraa-standard", "ask")).toBe(
-      "model-deepseek-v4-flash",
+      "model-standard",
     );
     expect(resolveTierToProviderKey("umbraa-standard", "agent")).toBe(
-      "model-deepseek-v4-flash",
+      "model-standard",
     );
   });
 
-  it("Umbraa Pro resolves to nemotron-ultra in both modes", () => {
+  it("Umbraa Pro resolves to model-pro in both modes", () => {
     expect(resolveTierToProviderKey("umbraa-pro", "ask")).toBe(
-      "model-nemotron-ultra",
+      "model-pro",
     );
     expect(resolveTierToProviderKey("umbraa-pro", "agent")).toBe(
-      "model-nemotron-ultra",
+      "model-pro",
     );
   });
 

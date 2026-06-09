@@ -175,28 +175,26 @@ const kiloGateway = createOpenAI({
 });
 
 const buildProviderMap = (gateway: ReturnType<typeof createOpenAI>) => {
-  // Kilo Gateway free models with tool calling support
+  // Verified working free models on Kilo Gateway (June 2026)
+  // Tool support: nemotron-super ✅, owl-alpha ❌, nex-n2-pro ❌, all reasoning models ❌
   const nemotronSuper = gateway("nvidia/nemotron-3-super-120b-a12b:free");
-  const nemotronUltra = gateway("nvidia/nemotron-3-ultra-550b-a55b:free");
   const owlAlpha = gateway("openrouter/owl-alpha");
-  const laguna = gateway("poolside/laguna-m.1:free");
-  const auto = gateway("kilo-auto/free");
-  const reasoning = gateway("nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free");
+  const nexN2Pro = gateway("nex-agi/nex-n2-pro:free");
 
   return {
-    "ask-model": auto,
-    "ask-model-free": auto,
-    // Agent mode: use tool-supported free models (rotated by Kilo Gateway)
+    "ask-model": owlAlpha,
+    "ask-model-free": owlAlpha,
+    // Agent mode: only nemotron-super supports tool calling reliably
     "agent-model": nemotronSuper,
     "agent-model-free": nemotronSuper,
-    "model-deepseek-v4-flash": auto,
-    "model-nemotron-ultra": nemotronUltra,
+    "model-standard": owlAlpha,
+    "model-pro": nexN2Pro,
     "model-owl-alpha": owlAlpha,
-    "model-reasoning": reasoning,
-    // Fallbacks: different free models to avoid same-provider failures
-    "fallback-agent-model": laguna,
-    "fallback-ask-model": auto,
-    "title-generator-model": auto,
+    "model-reasoning": nemotronSuper,
+    // Fallbacks: different providers to avoid same-provider failures
+    "fallback-agent-model": owlAlpha,
+    "fallback-ask-model": nemotronSuper,
+    "title-generator-model": owlAlpha,
   } as Record<string, any>;
 };
 
@@ -206,32 +204,32 @@ export type ModelName = keyof typeof baseProviders;
 
 export const modelCutoffDates: Record<ModelName, string> &
   Record<string, string> = {
-  "ask-model": "May 2025",
-  "ask-model-free": "May 2025",
-  "agent-model": "May 2025",
-  "agent-model-free": "May 2025",
-  "model-deepseek-v4-flash": "May 2025",
-  "model-nemotron-ultra": "May 2025",
-  "model-owl-alpha": "May 2025",
-  "model-reasoning": "May 2025",
-  "fallback-agent-model": "January 2025",
-  "fallback-ask-model": "January 2025",
-  "title-generator-model": "January 2025",
+  "ask-model": "2025",
+  "ask-model-free": "2025",
+  "agent-model": "2025",
+  "agent-model-free": "2025",
+  "model-standard": "2025",
+  "model-pro": "2025",
+  "model-owl-alpha": "2025",
+  "model-reasoning": "2025",
+  "fallback-agent-model": "2025",
+  "fallback-ask-model": "2025",
+  "title-generator-model": "2025",
 };
 
 export const modelDisplayNames: Record<ModelName, string> &
   Record<string, string> = {
-  "ask-model": "Auto — intelligent model router",
-  "ask-model-free": "Auto — intelligent model router",
-  "agent-model": "NVIDIA Nemotron 3 Super (free)",
-  "agent-model-free": "NVIDIA Nemotron 3 Super (free)",
-  "model-deepseek-v4-flash": "DeepSeek V4 Flash (auto-router)",
-  "model-nemotron-ultra": "NVIDIA Nemotron 3 Ultra 550B (free)",
-  "model-owl-alpha": "Owl Alpha (1M context)",
-  "model-reasoning": "NVIDIA Nemotron 3 Nano Omni (reasoning)",
-  "fallback-agent-model": "Poolside Laguna M.1 (free)",
-  "fallback-ask-model": "Auto — intelligent model router",
-  "title-generator-model": "Auto Router",
+  "ask-model": "Owl Alpha — fast, 1M context",
+  "ask-model-free": "Owl Alpha — fast, 1M context",
+  "agent-model": "NVIDIA Nemotron 3 Super (free, tool-calling)",
+  "agent-model-free": "NVIDIA Nemotron 3 Super (free, tool-calling)",
+  "model-standard": "Owl Alpha — fast, 1M context",
+  "model-pro": "Nex N2 Pro — capable general model",
+  "model-owl-alpha": "Owl Alpha — fast, 1M context",
+  "model-reasoning": "NVIDIA Nemotron 3 Super (free, reasoning)",
+  "fallback-agent-model": "Owl Alpha — fast, 1M context",
+  "fallback-ask-model": "NVIDIA Nemotron 3 Super (free)",
+  "title-generator-model": "Owl Alpha",
 };
 
 export const getModelDisplayName = (modelName: ModelName): string => {
@@ -247,11 +245,7 @@ export function isAnthropicModel(modelName: string): boolean {
 }
 
 export function isDeepSeekModel(modelName: string): boolean {
-  return (
-    modelName === "ask-model-free" ||
-    modelName === "agent-model-free" ||
-    modelName === "model-deepseek-v4-flash"
-  );
+  return false;
 }
 
 export function supportsMultimodalToolResults(modelName?: string): boolean {
@@ -291,15 +285,15 @@ export function resolveTierToProviderKey(
 
   switch (tier) {
     case "umbraa-standard":
-      return "model-deepseek-v4-flash";
+      return "model-standard";
     case "umbraa-pro":
-      return "model-nemotron-ultra";
+      return "model-pro";
     case "umbraa-owl":
       return "model-owl-alpha";
     case "umbraa-reason":
       return "model-reasoning";
     default:
-      return "model-deepseek-v4-flash";
+      return "model-standard";
   }
 }
 

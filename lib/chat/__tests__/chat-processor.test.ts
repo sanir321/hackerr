@@ -160,12 +160,12 @@ describe("selectModel", () => {
       expect(selectModel("agent", "pro")).toBe("agent-model");
     });
 
-    it("should return ask-model-free (DeepSeek) for paid ask with no image/PDF", () => {
+    it("should return ask-model-free for paid ask with no image/PDF", () => {
       expect(selectModel("ask", "pro")).toBe("ask-model-free");
     });
 
-    it("should return ask-model (Gemini) for paid ask when an image/PDF is attached", () => {
-      expect(selectModel("ask", "pro", undefined, true)).toBe("ask-model");
+    it("should return ask-model-free for paid ask regardless of attachments", () => {
+      expect(selectModel("ask", "pro", undefined, true)).toBe("ask-model-free");
     });
 
     it("should return ask-model-free for ask mode (free)", () => {
@@ -183,27 +183,21 @@ describe("selectModel", () => {
 
   // Tier override — each tier maps to the same provider key in both modes
   describe("tier override for ask mode (paid users)", () => {
-    it("should map Umbraa Pro to Nemotron Ultra in ask mode", () => {
+    it("should map Umbraa Pro to Nex N2 Pro in ask mode", () => {
       expect(selectModel("ask", "ultra", "umbraa-pro")).toBe(
-        "model-nemotron-ultra",
+        "model-pro",
       );
     });
 
-    it("should map Umbraa Pro to Nemotron Ultra for team users", () => {
+    it("should map Umbraa Pro to Nex N2 Pro for team users", () => {
       expect(selectModel("ask", "team", "umbraa-pro")).toBe(
-        "model-nemotron-ultra",
+        "model-pro",
       );
     });
 
-    it("should map Umbraa Standard to DeepSeek V4 Flash", () => {
+    it("should map Umbraa Standard to Owl Alpha Standard", () => {
       expect(selectModel("ask", "pro", "umbraa-standard")).toBe(
-        "model-deepseek-v4-flash",
-      );
-    });
-
-    it("should map Umbraa Standard to DeepSeek V4 Flash even with image/PDF", () => {
-      expect(selectModel("ask", "pro", "umbraa-standard", true)).toBe(
-        "model-deepseek-v4-flash",
+        "model-standard",
       );
     });
 
@@ -220,15 +214,15 @@ describe("selectModel", () => {
 
   // Agent mode
   describe("tier override in agent mode", () => {
-    it("should map Umbraa Standard to DeepSeek V4 Flash in agent mode", () => {
+    it("should map Umbraa Standard to model-standard in agent mode", () => {
       expect(selectModel("agent", "pro", "umbraa-standard")).toBe(
-        "model-deepseek-v4-flash",
+        "model-standard",
       );
     });
 
-    it("should map Umbraa Pro to Nemotron Ultra in agent mode", () => {
+    it("should map Umbraa Pro to model-pro in agent mode", () => {
       expect(selectModel("agent", "pro", "umbraa-pro")).toBe(
-        "model-nemotron-ultra",
+        "model-pro",
       );
     });
 
@@ -269,12 +263,12 @@ describe("selectModel", () => {
       expect(selectModel("agent", "pro", "auto")).toBe("agent-model");
     });
 
-    it("should treat 'auto' as no override in ask mode (text-only → DeepSeek)", () => {
+    it("should treat 'auto' as no override in ask mode (text-only)", () => {
       expect(selectModel("ask", "pro", "auto")).toBe("ask-model-free");
     });
 
-    it("should treat 'auto' as no override in ask mode with image/PDF → Gemini", () => {
-      expect(selectModel("ask", "pro", "auto", true)).toBe("ask-model");
+    it("should treat 'auto' as no override in ask mode regardless of image/PDF", () => {
+      expect(selectModel("ask", "pro", "auto", true)).toBe("ask-model-free");
     });
   });
 
@@ -283,7 +277,7 @@ describe("selectModel", () => {
     it("should use default when override is undefined", () => {
       expect(selectModel("agent", "pro", undefined)).toBe("agent-model");
       expect(selectModel("ask", "pro", undefined)).toBe("ask-model-free");
-      expect(selectModel("ask", "pro", undefined, true)).toBe("ask-model");
+      expect(selectModel("ask", "pro", undefined, true)).toBe("ask-model-free");
     });
   });
 });

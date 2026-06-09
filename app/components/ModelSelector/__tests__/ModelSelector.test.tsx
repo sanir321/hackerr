@@ -29,18 +29,13 @@ describe("ModelSelector", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^Auto$/i }));
 
-    expect(
-      screen.getByText(
-        "Balanced quality and speed, recommended for most tasks",
-      ),
-    ).toBeVisible();
-    expect(screen.getByText("DeepSeek V4 Flash")).toBeVisible();
-    expect(screen.getByText("Nemotron 3 Ultra 550B")).toBeVisible();
     expect(screen.getByText("Owl Alpha")).toBeVisible();
-    expect(screen.getByText("Nemotron 3 Nano Omni")).toBeVisible();
+    expect(screen.getByText("Owl Alpha (Standard)")).toBeVisible();
+    expect(screen.getByText("Nex N2 Pro")).toBeVisible();
+    expect(screen.getByText("Nemotron 3 Super (Reasoning)")).toBeVisible();
 
     expect(
-      screen.getByRole("button", { name: /DeepSeek V4 Flash/i }),
+      screen.getByRole("button", { name: /Owl Alpha \(Standard\)/i }),
     ).toHaveAttribute("aria-pressed", "false");
   });
 
@@ -50,7 +45,7 @@ describe("ModelSelector", () => {
       <ModelSelector value="umbraa-pro" onChange={onChange} mode="ask" />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Nemotron 3 Ultra 550B/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Nex N2 Pro/i }));
     fireEvent.click(
       screen.getByRole("button", {
         name: /Auto Balanced quality and speed/i,

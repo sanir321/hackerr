@@ -464,8 +464,8 @@ export class SummarizationTracker {
 const MODEL_FALLBACK_CHAIN: Partial<Record<ModelName, readonly ModelName[]>> = {
   "ask-model-free": ["fallback-ask-model"],
   "agent-model-free": ["fallback-agent-model"],
-  "model-deepseek-v4-flash": ["fallback-ask-model"],
-  "model-nemotron-ultra": ["fallback-agent-model"],
+  "model-standard": ["fallback-ask-model"],
+  "model-pro": ["fallback-ask-model"],
   "model-owl-alpha": ["fallback-agent-model"],
   "model-reasoning": ["fallback-agent-model"],
   "ask-model": ["fallback-ask-model"],
@@ -486,7 +486,7 @@ const getFallbackKeys = (
   options: FallbackOptions = {},
 ): readonly ModelName[] | undefined => {
   if (!modelName) return undefined;
-  if (modelName === "model-nemotron-ultra" || modelName === "model-owl-alpha" || modelName === "model-reasoning") {
+  if (modelName === "model-pro" || modelName === "model-owl-alpha" || modelName === "model-reasoning") {
     if (mode === "agent" && options.hasMultimodalToolResults) {
       return ANTHROPIC_MULTIMODAL_AGENT_FALLBACK_CHAIN;
     }
