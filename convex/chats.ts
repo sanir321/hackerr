@@ -121,7 +121,7 @@ export const getChatByIdFromClient = query({
       active_stream_id: v.optional(v.string()),
       canceled_at: v.optional(v.number()),
       default_model_slug: v.optional(
-        v.union(v.literal("ask"), v.literal("agent"), v.literal("agent-long")),
+        v.union(v.literal("ask"), v.literal("agent")),
       ),
       todos: v.optional(
         v.array(
@@ -145,7 +145,6 @@ export const getChatByIdFromClient = query({
       share_date: v.optional(v.number()),
       update_time: v.number(),
       pinned_at: v.optional(v.number()),
-      active_trigger_run_id: v.optional(v.string()),
       sandbox_type: v.optional(v.string()),
       selected_model: v.optional(v.string()),
     }),
@@ -216,7 +215,7 @@ export const getChatById = query({
       active_stream_id: v.optional(v.string()),
       canceled_at: v.optional(v.number()),
       default_model_slug: v.optional(
-        v.union(v.literal("ask"), v.literal("agent"), v.literal("agent-long")),
+        v.union(v.literal("ask"), v.literal("agent")),
       ),
       todos: v.optional(
         v.array(
@@ -239,7 +238,6 @@ export const getChatById = query({
       share_date: v.optional(v.number()),
       update_time: v.number(),
       pinned_at: v.optional(v.number()),
-      active_trigger_run_id: v.optional(v.string()),
       sandbox_type: v.optional(v.string()),
       selected_model: v.optional(v.string()),
     }),
@@ -312,7 +310,7 @@ export const updateChatPreferences = mutation({
     id: v.string(),
     selectedModel: v.optional(v.string()),
     mode: v.optional(
-      v.union(v.literal("ask"), v.literal("agent"), v.literal("agent-long")),
+      v.union(v.literal("ask"), v.literal("agent")),
     ),
   },
   returns: v.null(),
@@ -369,7 +367,7 @@ export const updateChat = mutation({
     title: v.optional(v.string()),
     finishReason: v.optional(v.string()),
     defaultModelSlug: v.optional(
-      v.union(v.literal("ask"), v.literal("agent"), v.literal("agent-long")),
+      v.union(v.literal("ask"), v.literal("agent")),
     ),
     todos: v.optional(
       v.array(
@@ -415,7 +413,7 @@ export const updateChat = mutation({
       const updateData: {
         title?: string;
         finish_reason?: string;
-        default_model_slug?: "ask" | "agent" | "agent-long";
+        default_model_slug?: "ask" | "agent";
         todos?: Array<{
           id: string;
           content: string;
@@ -921,56 +919,6 @@ export const deleteAllChatsBatch = internalMutation({
       console.error("Failed to delete all chats batch:", error);
       throw error;
     }
-  },
-});
-
-/**
- * Set the active trigger.dev run id for a chat (used by /api/agent-long when
- * kicking off a long-running task). Stored on the chat row so the cancel
- * endpoint and reconnect flow can find the in-flight run by chatId.
- */
-export const setActiveTriggerRun = mutation({
-  args: {
-    serviceKey: v.string(),
-    chatId: v.string(),
-    triggerRunId: v.union(v.string(), v.null()),
-    expectedRunId: v.optional(v.string()),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    validateServiceKey(args.serviceKey);
-    const chat = await ctx.db
-      .query("chats")
-      .withIndex("by_chat_id", (q) => q.eq("id", args.chatId))
-      .first();
-    if (!chat) return null;
-    if (
-      args.expectedRunId !== undefined &&
-      chat.active_trigger_run_id !== args.expectedRunId
-    ) {
-      return null;
-    }
-    await ctx.db.patch(chat._id, {
-      active_trigger_run_id: args.triggerRunId ?? undefined,
-    });
-    return null;
-  },
-});
-
-/**
- * Get the active trigger.dev run id for a chat. Used by the cancel endpoint
- * (client doesn't know the runId; only the server-stored row does).
- */
-export const getActiveTriggerRun = query({
-  args: { serviceKey: v.string(), chatId: v.string() },
-  returns: v.union(v.string(), v.null()),
-  handler: async (ctx, args) => {
-    validateServiceKey(args.serviceKey);
-    const chat = await ctx.db
-      .query("chats")
-      .withIndex("by_chat_id", (q) => q.eq("id", args.chatId))
-      .first();
-    return chat?.active_trigger_run_id ?? null;
   },
 });
 

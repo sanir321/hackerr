@@ -4,7 +4,7 @@ import {
   MAX_FILE_SIZE_BYTES,
 } from "@/lib/constants/s3";
 
-export type UploadPolicyMode = ChatMode | "agent-long";
+export type UploadPolicyMode = ChatMode;
 
 export const MAX_ASK_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 export const MAX_PROVIDER_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -27,7 +27,7 @@ export function isSupportedImageMediaType(mediaType: string): boolean {
 }
 
 export function isAgentUploadMode(mode?: UploadPolicyMode): boolean {
-  return mode === "agent" || mode === "agent-long";
+  return mode === "agent";
 }
 
 export function getMaxFilesLimitForUploadMode(mode: ChatMode): number {

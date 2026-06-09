@@ -3,7 +3,6 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useGlobalState } from "../contexts/GlobalState";
 import { useLatestRef } from "@/app/hooks/useLatestRef";
-import { shouldUseAgentLongForAgent } from "@/lib/chat/agent-routing";
 import { isAgentMode } from "@/lib/utils/mode-helpers";
 import type { ChatMessage, ChatStatus } from "@/types";
 import { Id } from "@/convex/_generated/dataModel";
@@ -110,25 +109,6 @@ export const useChatHandlers = ({
   const cancelTempStreamMutation = useMutation(
     api.tempStreams.cancelTempStreamFromClient,
   );
-
-  // Mirrors the transport routing rule in app/components/chat.tsx. Persistent
-  // chats only; temporary chats use the legacy Redis pub/sub cancel path.
-  const shouldCancelTriggerRun = () =>
-    !temporaryChatsEnabledRef.current &&
-    shouldUseAgentLongForAgent({
-      mode: chatModeRef.current,
-    });
-
-  const cancelTriggerRun = () => {
-    if (!shouldCancelTriggerRun()) return;
-    fetch("/api/agent-long/cancel", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chatId }),
-    }).catch((error) => {
-      console.error("Failed to cancel trigger.dev run:", error);
-    });
-  };
 
   /**
    * Helper to stop an active stream, normalize messages, and persist state.
@@ -259,10 +239,6 @@ export const useChatHandlers = ({
           // Immediately stop current stream and send right away
           stop();
 
-          // Cancel the trigger.dev run for agent-long streams so the prior
-          // run stops burning compute instead of finishing in the background.
-          cancelTriggerRun();
-
           // Cancel the stream in database and save current message state
           if (!temporaryChatsEnabledRef.current) {
             cancelStreamMutation({ chatId }).catch((error) => {
@@ -373,11 +349,6 @@ export const useChatHandlers = ({
 
     // Clear any active status indicators immediately
     onStopCallback?.();
-
-    // Fire the trigger.dev cancel in parallel with stopActiveStream so the
-    // Trigger.dev API round-trip overlaps the Convex cancel/save instead of
-    // sequencing after it.
-    cancelTriggerRun();
 
     try {
       await stopActiveStream();

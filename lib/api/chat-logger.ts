@@ -29,7 +29,7 @@ import {
 
 export interface ChatLoggerConfig {
   chatId: string;
-  endpoint: "/api/chat" | "/api/agent-long";
+  endpoint: "/api/chat";
 }
 
 export interface RequestDetails {

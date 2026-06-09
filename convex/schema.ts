@@ -8,10 +8,9 @@ export default defineSchema({
     user_id: v.string(),
     finish_reason: v.optional(v.string()),
     active_stream_id: v.optional(v.string()),
-    active_trigger_run_id: v.optional(v.string()),
     canceled_at: v.optional(v.number()),
     default_model_slug: v.optional(
-      v.union(v.literal("ask"), v.literal("agent"), v.literal("agent-long")),
+      v.union(v.literal("ask"), v.literal("agent")),
     ),
     todos: v.optional(
       v.array(
@@ -422,7 +421,7 @@ export default defineSchema({
     organization_id: v.optional(v.string()),
     chat_id: v.optional(v.string()),
     endpoint: v.optional(
-      v.union(v.literal("/api/chat"), v.literal("/api/agent-long")),
+      v.literal("/api/chat"),
     ),
     mode: v.optional(v.union(v.literal("ask"), v.literal("agent"))),
     subscription: v.optional(v.string()),

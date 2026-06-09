@@ -28,14 +28,6 @@ import { DragDropOverlay } from "./DragDropOverlay";
 import { normalizeMessages } from "@/lib/utils/message-processor";
 import { ChatSDKError } from "@/lib/errors";
 import { fetchWithErrorHandlers, convertToUIMessages } from "@/lib/utils";
-import {
-  fetchAgentLongStream,
-  resumeAgentLongStream,
-} from "@/lib/chat/agent-long-transport";
-import {
-  shouldUseAgentLongForAgent,
-} from "@/lib/chat/agent-routing";
-import { stripAgentLongHeartbeatPartsFromMessages } from "@/lib/chat/agent-long-heartbeat";
 import { toast } from "sonner";
 import type { Todo, ChatMessage, ChatMode, SandboxPreference } from "@/types";
 import { coerceSelectedModel } from "@/types/chat";
@@ -318,9 +310,6 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
   // user's first message before generation completes, which would otherwise
   // flicker into the header on abort.
   const chatTitle = streamedTitle ?? chatData?.title ?? null;
-  const activeTriggerRunRef = useLatestRef(
-    (chatData as any)?.active_trigger_run_id as string | undefined,
-  );
 
   // Convert paginated Convex messages to UI format for useChat and useAutoResume
   // Messages come from server in descending order (newest first from pagination); reverse for chronological order
@@ -345,50 +334,9 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     new DefaultChatTransport({
       api: "/api/chat",
       fetch: async (input, init) => {
-        const mode = chatModeRef.current;
-        const useTriggerAgent = shouldUseAgentLongForAgent({
-          mode,
-        });
-        if (useTriggerAgent) {
-          // useChat reuses this fetch for both POST sendMessages and GET
-          // reconnectToStream — dispatch on method.
-          if (init?.method === "GET") {
-            return resumeAgentLongStream(
-              typeof input === "string" ? input : input.toString(),
-              init,
-            );
-          }
-          return fetchAgentLongStream(init);
-        }
-        // Reconnect for legacy "agent-long" chats normalised to "agent" mode on
-        // load — prepareReconnectToStreamRequest already pointed at the resume
-        // URL, so route based on the URL (not on ref state) to be resilient to
-        // stale refs.
-        if (
-          init?.method === "GET" &&
-          (typeof input === "string" ? input : input.toString()).includes(
-            "/api/agent-long/resume",
-          )
-        ) {
-          return resumeAgentLongStream(
-            typeof input === "string" ? input : input.toString(),
-            init,
-          );
-        }
         return fetchWithErrorHandlers(input, init);
       },
       prepareReconnectToStreamRequest: ({ id, api }) => {
-        // Use the agent-long resume endpoint when there is a stored trigger run
-        // (covers legacy "agent-long" chats normalised to "agent" on load) OR
-        // when the current run is using Trigger.dev for agent mode.
-        const useTriggerAgent = shouldUseAgentLongForAgent({
-          mode: chatModeRef.current,
-        });
-        if (useTriggerAgent || !!activeTriggerRunRef.current) {
-          return {
-            api: `/api/agent-long/resume?chatId=${encodeURIComponent(id)}`,
-          };
-        }
         return { api: `${api}/${id}/stream` };
       },
       prepareSendMessagesRequest: ({ id, messages, body }) => {
@@ -405,9 +353,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
           !isExistingChatRef.current && temporaryChatsEnabledRef.current;
 
         const stripUrlsFromMessages = (msgs: ChatMessage[]): ChatMessage[] => {
-          const messagesWithoutHeartbeats =
-            stripAgentLongHeartbeatPartsFromMessages(msgs);
-          return messagesWithoutHeartbeats.map((msg) => {
+          return msgs.map((msg) => {
             if (!msg.parts || msg.parts.length === 0) return msg;
             const strippedParts = msg.parts.map((part: any) => {
               if (part.type === "file" && "url" in part) {
@@ -709,9 +655,6 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
       const slug = (chatData as any).default_model_slug;
       if (slug === "ask" || slug === "agent") {
         setChatMode(slug);
-      } else if (slug === "agent-long") {
-        // Legacy chats stored as agent-long map to agent mode
-        setChatMode("agent");
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -857,9 +800,9 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     // Comparing parts.length catches content updates where the ID stays the same.
     const current = messagesRef.current;
 
-    // Don't overwrite with fewer messages — the backend (e.g. agent-long Trigger.dev
-    // task) hasn't finished persisting the generated messages yet. Once it catches
-    // up, Convex will push the full set and the normal sync below will apply.
+    // Don't overwrite with fewer messages — the backend hasn't finished
+    // persisting the generated messages yet. Once it catches up, Convex will
+    // push the full set and the normal sync below will apply.
     if (uiMessages.length < current.length) {
       return;
     }
@@ -875,7 +818,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
       return;
     }
 
-    // Don't let Convex reorder messages that already exist locally. The trigger
+    // Don't let Convex reorder messages that already exist locally. The assistant
     // task's onFinish saves the assistant message after the stream finishes, so
     // the next user message may land in Convex first (_creationTime ordering).
     // Local ordering is authoritative; only accept additive/content updates.
@@ -1135,7 +1078,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
         hasActiveStream={
           chatData === undefined
             ? undefined
-            : !!chatData?.active_stream_id || !!chatData?.active_trigger_run_id
+            : !!chatData?.active_stream_id
         }
       />
       <div className="flex min-h-0 flex-1 w-full flex-col bg-background overflow-hidden">

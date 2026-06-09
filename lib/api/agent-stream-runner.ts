@@ -1,8 +1,8 @@
 /**
  * Shared streamText factory for the agent loop.
  *
- * Both the Next.js chat handler and the trigger.dev agent-long task
- * run the same multi-step tool loop. This module owns the single canonical
+ * Both the Next.js chat handler and the chat API route use this runner
+ * to run the same multi-step tool loop. This module owns the single canonical
  * implementation of that loop — prepareStep, stopWhen, onChunk, onStepFinish,
  * streamText.onFinish, onError, onAbort — so divergence is impossible.
  *
@@ -92,7 +92,7 @@ export type AgentStreamState = {
   providerError: unknown;
   /** Stop-condition flags set by the respective onFired callbacks. */
   stoppedDueToTokenExhaustion: boolean;
-  /** Maps to stoppedDueToPreemptiveTimeout in chat-handler, stoppedDueToElapsedTimeout in agent-long. */
+  /** Maps to stoppedDueToPreemptiveTimeout in chat-handler. */
   stoppedDueToElapsedTimeout: boolean;
   stoppedDueToDoomLoop: boolean;
   stoppedDueToBudgetExhaustion: boolean;
@@ -192,7 +192,7 @@ export type AgentStreamContext = {
   /**
    * Platform-specific: return a finish-reason string if a hard platform
    * timeout fired synchronously (Vercel: preemptiveTimeout.isPreemptive()),
-   * or null when no hard timeout applies (trigger.dev: always null).
+   * or null when no hard timeout applies.
    */
   getHardTimeoutReason: () => string | null;
 };

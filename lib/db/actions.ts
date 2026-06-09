@@ -902,41 +902,6 @@ export async function getUserCustomization({ userId }: { userId: string }) {
   }
 }
 
-export async function setActiveTriggerRun({
-  chatId,
-  triggerRunId,
-  expectedRunId,
-}: {
-  chatId: string;
-  triggerRunId: string | null;
-  expectedRunId?: string;
-}) {
-  try {
-    await getConvexClient().mutation(api.chats.setActiveTriggerRun, {
-      serviceKey,
-      chatId,
-      triggerRunId,
-      ...(expectedRunId !== undefined ? { expectedRunId } : {}),
-    });
-  } catch (error) {
-    throw new ChatSDKError(
-      "bad_request:database",
-      "Failed to set active trigger run",
-    );
-  }
-}
-
-export async function getActiveTriggerRun({ chatId }: { chatId: string }) {
-  try {
-    return await getConvexClient().query(api.chats.getActiveTriggerRun, {
-      serviceKey,
-      chatId,
-    });
-  } catch (error) {
-    return null;
-  }
-}
-
 export async function startStream({
   chatId,
   streamId,
@@ -1265,7 +1230,7 @@ export async function logUsageRecord({
   userId: string;
   organizationId?: string;
   chatId?: string;
-  endpoint?: "/api/chat" | "/api/agent-long";
+  endpoint?: "/api/chat";
   mode?: ChatMode;
   subscription?: SubscriptionTier;
   model: string;

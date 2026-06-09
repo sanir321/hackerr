@@ -191,7 +191,7 @@ export class UsageTracker {
     userId: string;
     organizationId?: string;
     chatId?: string;
-    endpoint?: "/api/chat" | "/api/agent-long";
+    endpoint?: "/api/chat";
     mode?: ChatMode;
     subscription?: SubscriptionTier;
     selectedModel: string;

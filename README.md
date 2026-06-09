@@ -26,7 +26,6 @@ You'll need the following accounts:
 - [E2B](https://e2b.dev/) - Sandbox environment for secure code execution
 - [Convex](https://www.convex.dev/) - Database and backend
 - [WorkOS](https://workos.com/) - Authentication and user management
-- [Trigger.dev](https://trigger.dev/) - Durable runtime for agent tasks
 
 **Optional:**
 - [Perplexity](https://perplexity.ai/) - Web search functionality
@@ -54,14 +53,4 @@ pnpm run dev:next
 pnpm run dev:convex
 ```
 
-### Run the Trigger.dev worker
 
-Agent mode runs on a Trigger.dev task. To use it locally:
-
-1. Create a project at https://cloud.trigger.dev, copy your dev key into `.env.local` as `TRIGGER_SECRET_KEY`.
-2. Add env vars in Trigger.dev dashboard: `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_SERVICE_ROLE_KEY`, `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `E2B_API_KEY`, etc.
-3. Start the worker:
-
-   ```bash
-   npx trigger.dev@latest dev
-   ```

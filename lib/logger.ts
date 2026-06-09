@@ -22,7 +22,7 @@ export interface ChatWideEvent {
 
   // Service context
   service: "chat-handler";
-  endpoint: "/api/chat" | "/api/agent-long";
+  endpoint: "/api/chat";
   version: string;
   region?: string;
 
@@ -216,7 +216,7 @@ export class WideEventBuilder {
   constructor(
     requestId: string,
     chatId: string,
-    endpoint: "/api/chat" | "/api/agent-long",
+    endpoint: "/api/chat",
   ) {
     this.event = {
       timestamp: new Date().toISOString(),
@@ -719,7 +719,7 @@ export const logger = {
  */
 export function createWideEventBuilder(
   chatId: string,
-  endpoint: "/api/chat" | "/api/agent-long",
+  endpoint: "/api/chat",
 ): WideEventBuilder {
   const requestId = `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   return new WideEventBuilder(requestId, chatId, endpoint);

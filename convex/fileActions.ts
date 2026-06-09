@@ -691,7 +691,7 @@ export const saveFile = action({
     userId: v.optional(v.string()),
     skipTokenValidation: v.optional(v.boolean()),
     mode: v.optional(
-      v.union(v.literal("ask"), v.literal("agent"), v.literal("agent-long")),
+      v.union(v.literal("ask"), v.literal("agent")),
     ),
   },
   returns: v.object({
@@ -738,8 +738,7 @@ export const saveFile = action({
     }
 
     // Determine if we should skip token validation based on mode
-    const isAgentUploadMode =
-      args.mode === "agent" || args.mode === "agent-long";
+    const isAgentUploadMode = args.mode === "agent";
     const shouldSkipTokenValidation =
       args.skipTokenValidation || isAgentUploadMode;
 
