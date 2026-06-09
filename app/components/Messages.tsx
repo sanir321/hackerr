@@ -24,6 +24,28 @@ import DotsSpinner from "@/components/ui/dots-spinner";
 import { hasTextContent } from "@/lib/utils/message-utils";
 import { useDataStreamState } from "./DataStreamProvider";
 
+const formatToolName = (slug?: string): string => {
+  if (!slug) return "tool";
+  const map: Record<string, string> = {
+    "run_terminal_cmd": "terminal command",
+    "interact_terminal_session": "interactive shell",
+    "file": "file operation",
+    "web_search": "web search",
+    "open_url": "fetching URL",
+    "todo_write": "updating tasks",
+    "get_terminal_files": "listing files",
+    "create_note": "creating note",
+    "list_notes": "reading notes",
+    "update_note": "updating note",
+    "delete_note": "deleting note",
+    "http_request": "HTTP request",
+    "list_requests": "listing requests",
+    "view_request": "viewing request",
+    "send_request": "sending request",
+  };
+  return map[slug] ?? slug.replace(/_/g, " ");
+};
+
 interface MessagesProps {
   messages: ChatMessage[];
   setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
@@ -366,8 +388,8 @@ export const Messages = ({
                     <>
                       <DotsSpinner size="sm" variant="primary" />
                       <span className="text-sm">
-                        {agentStatus.phase === "thinking" && `${agentStatus.detail ?? "Thinking"}...`}
-                        {agentStatus.phase === "calling-tool" && `Running ${agentStatus.detail ?? "tool"}...`}
+                        {agentStatus.phase === "thinking" && "Thinking..."}
+                        {agentStatus.phase === "calling-tool" && `Running ${formatToolName(agentStatus.detail)}...`}
                         {agentStatus.phase === "processing-results" && "Processing results..."}
                         {agentStatus.phase === "summarizing" && "Summarizing..."}
                         {!["thinking", "calling-tool", "processing-results", "summarizing"].includes(agentStatus.phase) && "Working..."}

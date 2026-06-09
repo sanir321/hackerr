@@ -277,7 +277,7 @@ export async function createAgentStream(
 
     prepareStep: async ({ steps, messages }) => {
       try {
-        writeAgentStatus(ctx.writer, "thinking", `Step ${(steps as unknown[]).length + 1}`);
+        writeAgentStatus(ctx.writer, "thinking");
         const threshold = Math.floor(
           getMaxTokensForSubscription(ctx.subscription, { mode: ctx.mode }) *
             SUMMARIZATION_THRESHOLD_PERCENTAGE,
