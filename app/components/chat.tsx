@@ -294,17 +294,12 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
   );
 
   // Query local sandbox connections only when we need to validate a non-E2B sandbox_type
+  // NOTE: localSandbox module was removed; always treat as E2B.
   const storedSandboxType = (chatData as any)?.sandbox_type as
     | string
     | undefined;
-  const needsConnectionValidation =
-    !!storedSandboxType &&
-    storedSandboxType !== "e2b" &&
-    !hasInitializedSandboxRef.current;
-  const localConnections = useQuery(
-    api.localSandbox.listConnections,
-    needsConnectionValidation ? undefined : "skip",
-  );
+  const needsConnectionValidation = false;
+  const localConnections = undefined;
 
   // Prefer the mid-stream title — the server seeds chatData.title with the
   // user's first message before generation completes, which would otherwise
