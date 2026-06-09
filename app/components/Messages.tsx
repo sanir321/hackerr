@@ -56,6 +56,7 @@ interface MessagesProps {
     status: "started" | "completed";
     message: string;
   } | null;
+  agentStatus?: { phase: string; detail?: string } | null;
   mode?: import("@/types").ChatMode;
   chatTitle?: string | null;
   branchedFromChatId?: string;
@@ -83,6 +84,7 @@ export const Messages = ({
   finishReason,
   uploadStatus,
   summarizationStatus,
+  agentStatus,
   mode,
   chatTitle,
   branchedFromChatId,
@@ -359,8 +361,21 @@ export const Messages = ({
                 <Shimmer className="text-sm">{`${uploadStatus.message}...`}</Shimmer>
               )}
               {shouldShowLoadingDots && (
-                <div className="bg-muted text-muted-foreground rounded-lg px-3 py-2 inline-flex items-center">
-                  <DotsSpinner size="sm" variant="primary" />
+                <div className="bg-muted text-muted-foreground rounded-lg px-3 py-2 inline-flex items-center gap-2">
+                  {agentStatus ? (
+                    <>
+                      <DotsSpinner size="sm" variant="primary" />
+                      <span className="text-sm">
+                        {agentStatus.phase === "thinking" && `${agentStatus.detail ?? "Thinking"}...`}
+                        {agentStatus.phase === "calling-tool" && `Running ${agentStatus.detail ?? "tool"}...`}
+                        {agentStatus.phase === "processing-results" && "Processing results..."}
+                        {agentStatus.phase === "summarizing" && "Summarizing..."}
+                        {!["thinking", "calling-tool", "processing-results", "summarizing"].includes(agentStatus.phase) && "Working..."}
+                      </span>
+                    </>
+                  ) : (
+                    <DotsSpinner size="sm" variant="primary" />
+                  )}
                 </div>
               )}
             </div>

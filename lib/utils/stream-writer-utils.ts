@@ -145,3 +145,22 @@ export const writeAutoContinue = (writer: UIMessageStreamWriter): void => {
     data: { shouldContinue: true },
   });
 };
+
+// Agent status notifications — tells the UI what the agent is currently doing
+export type AgentStatusPhase =
+  | "thinking"
+  | "calling-tool"
+  | "processing-results"
+  | "summarizing";
+
+export const writeAgentStatus = (
+  writer: UIMessageStreamWriter,
+  phase: AgentStatusPhase,
+  detail?: string,
+): void => {
+  writer.write({
+    type: "data-agent-status",
+    data: { phase, detail },
+    transient: true,
+  });
+};

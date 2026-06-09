@@ -58,6 +58,7 @@ interface StreamingEphemeralState {
   } | null;
   rateLimitWarning: RateLimitWarningData | null;
   contextUsage: ContextUsageData;
+  agentStatus: { phase: string; detail?: string } | null;
 }
 
 type StreamingAction =
@@ -74,6 +75,7 @@ type StreamingAction =
       payload: StreamingEphemeralState["rateLimitWarning"];
     }
   | { type: "SET_CONTEXT_USAGE"; payload: ContextUsageData }
+  | { type: "SET_AGENT_STATUS"; payload: StreamingEphemeralState["agentStatus"] }
   | { type: "RESET_ON_FINISH" };
 
 const initialStreamingState: StreamingEphemeralState = {
@@ -81,6 +83,7 @@ const initialStreamingState: StreamingEphemeralState = {
   summarizationStatus: null,
   rateLimitWarning: null,
   contextUsage: { usedTokens: 0, maxTokens: 0 },
+  agentStatus: null,
 };
 
 function streamingReducer(
@@ -98,13 +101,16 @@ function streamingReducer(
       return { ...state, rateLimitWarning: action.payload };
     case "SET_CONTEXT_USAGE":
       return { ...state, contextUsage: action.payload };
+    case "SET_AGENT_STATUS":
+      return { ...state, agentStatus: action.payload };
     case "RESET_ON_FINISH":
-      if (state.uploadStatus === null && state.summarizationStatus === null)
+      if (state.uploadStatus === null && state.summarizationStatus === null && state.agentStatus === null)
         return state;
       return {
         ...state,
         uploadStatus: null,
         summarizationStatus: null,
+        agentStatus: null,
       };
     default:
       return state;
@@ -186,7 +192,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     streamingReducer,
     initialStreamingState,
   );
-  const { uploadStatus, summarizationStatus, rateLimitWarning, contextUsage } =
+  const { uploadStatus, summarizationStatus, rateLimitWarning, contextUsage, agentStatus } =
     streamingState;
 
   const {
@@ -460,6 +466,11 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
         case "data-context-usage": {
           const usage = dataPart.data as ContextUsageData;
           dispatchStreaming({ type: "SET_CONTEXT_USAGE", payload: usage });
+          break;
+        }
+        case "data-agent-status": {
+          const agentData = dataPart.data as { phase: string; detail?: string };
+          dispatchStreaming({ type: "SET_AGENT_STATUS", payload: agentData });
           break;
         }
         case "data-title": {
@@ -1132,6 +1143,7 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
                   finishReason={chatData?.finish_reason}
                   uploadStatus={uploadStatus}
                   summarizationStatus={summarizationStatus}
+                  agentStatus={agentStatus}
                   mode={chatMode ?? (chatData as any)?.default_model_slug}
                   chatTitle={chatTitle}
                   branchedFromChatId={branchedFromChatId}

@@ -33,6 +33,7 @@ import {
   logOpenRouterFallbackIfFired,
   isXaiSafetyError,
 } from "@/lib/api/chat-stream-helpers";
+import { writeAgentStatus } from "@/lib/utils/stream-writer-utils";
 import {
   elapsedTimeExceeds,
   tokenExhaustedAfterSummarization,
@@ -276,6 +277,7 @@ export async function createAgentStream(
 
     prepareStep: async ({ steps, messages }) => {
       try {
+        writeAgentStatus(ctx.writer, "thinking", `Step ${(steps as unknown[]).length + 1}`);
         const threshold = Math.floor(
           getMaxTokensForSubscription(ctx.subscription, { mode: ctx.mode }) *
             SUMMARIZATION_THRESHOLD_PERCENTAGE,
@@ -421,6 +423,7 @@ export async function createAgentStream(
           chunk.chunk.toolName,
           ctx.sandboxManager.getSandboxType(chunk.chunk.toolName),
         );
+        writeAgentStatus(ctx.writer, "calling-tool", chunk.chunk.toolName);
       }
     },
 
@@ -439,6 +442,8 @@ export async function createAgentStream(
           });
         }
       }
+
+      writeAgentStatus(ctx.writer, "processing-results");
 
       if (
         ctx.budgetMonitor?.checkAfterStep(
