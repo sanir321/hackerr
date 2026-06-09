@@ -213,7 +213,7 @@ export const createPreemptiveTimeout = ({
   chatId,
   endpoint,
   abortController,
-  safetyBuffer = 30,
+  safetyBuffer = 10,
 }: PreemptiveTimeoutOptions) => {
   // Use endpoint-specific max duration based on Vercel function limits
   const maxDuration = 300;

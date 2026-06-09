@@ -3,7 +3,7 @@ import { isE2BSandbox } from "./sandbox-types";
 
 // Must be under Vercel's 300s hard limit — a single command can't outlast the request.
 // 120s gives the agent loop room for multiple tool calls + LLM inference steps.
-export const MAX_COMMAND_EXECUTION_TIME = 2 * 60 * 1000;
+export const MAX_COMMAND_EXECUTION_TIME = 3 * 60 * 1000;
 
 /**
  * Common directories where user-installed CLI tools live (Go, Rust, Homebrew, etc.).

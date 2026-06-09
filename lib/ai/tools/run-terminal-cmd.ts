@@ -43,7 +43,7 @@ import {
 const DEFAULT_STREAM_TIMEOUT_SECONDS = 60;
 // Cap stream timeout to match command execution timeout — a single command
 // can't outlast the Vercel 300s hard limit.
-const MAX_TIMEOUT_SECONDS = 120;
+const MAX_TIMEOUT_SECONDS = 180;
 // Once an interactive PTY emits its first bytes, treat `quietMs` of silence
 // as "settled" (prompt drew, REPL banner finished, etc.). Lets `bash`/`python3`
 // return in ~half a second instead of blocking the user-supplied timeout

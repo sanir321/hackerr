@@ -211,7 +211,7 @@ export const createChatHandler = () => {
         abortController: userStopSignal,
       });
 
-      // Agent mode: abort if no first token within 60s (provider hung or unreachable)
+      // Agent mode: abort if no first token within 90s (free models can be slow)
       if (isAgentMode(mode)) {
         agentFirstTokenTimer = setTimeout(() => {
           if (!userStopSignal.signal.aborted) {
@@ -224,12 +224,12 @@ export const createChatHandler = () => {
                 chat_id: chatId,
                 user_id: userId,
                 mode,
-                timeout_ms: 60_000,
+                timeout_ms: 90_000,
               }),
             );
             userStopSignal.abort();
           }
-        }, 60_000);
+        }, 90_000);
       }
 
       // Parallel block 1: independent DB/Redis calls that share no dependencies
