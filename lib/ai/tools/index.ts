@@ -11,6 +11,7 @@ import { createFile } from "./file";
 import { createWebSearch } from "./web-search";
 import { createOpenUrlTool } from "./open-url";
 import { createTodoWrite } from "./todo-write";
+import { createAskUser } from "./ask-user";
 // Caido proxy temporarily disabled for all users — see lib/api/chat-handler.ts kill switch.
 import { createProxyTools } from "./proxy-tool";
 import {
@@ -140,6 +141,7 @@ export const createTools = (
     // one-time object so model-specific tool schemas can be rebuilt for
     // provider fallback legs.
     const allTools = {
+      ask_user: createAskUser(context),
       run_terminal_cmd: createRunTerminalCmd(context),
       interact_terminal_session: createInteractTerminalSession(context),
       get_terminal_files: createGetTerminalFiles(context),

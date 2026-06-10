@@ -1047,6 +1047,18 @@ export const Chat = ({ autoResume }: { autoResume: boolean }) => {
     handleSubmit(new Event("submit") as unknown as React.FormEvent);
   }, [chatId, status, input, isExistingChat, messages.length, handleSubmit]);
 
+  // Listen for ask_user tool button clicks — auto-send the selection as a message
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      if (detail && status === "ready") {
+        sendMessage({ text: detail });
+      }
+    };
+    window.addEventListener("ask-user-select", handler);
+    return () => window.removeEventListener("ask-user-select", handler);
+  }, [status, sendMessage]);
+
   const hasMessages = messages.length > 0;
   const showChatLayout = hasMessages || isExistingChat;
 

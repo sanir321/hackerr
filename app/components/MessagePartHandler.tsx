@@ -10,6 +10,7 @@ import { TodoToolHandler } from "./tools/TodoToolHandler";
 import { NotesToolHandler } from "./tools/NotesToolHandler";
 import { ProxyToolHandler } from "./tools/ProxyToolHandler";
 import { GetTerminalFilesHandler } from "./tools/GetTerminalFilesHandler";
+import { AskUserHandler } from "./AskUserHandler";
 import { SummarizationHandler } from "./tools/SummarizationHandler";
 import type { ChatStatus } from "@/types";
 import type { FileDetails } from "@/types/file";
@@ -219,6 +220,9 @@ export const MessagePartHandler = memo(function MessagePartHandler({
 
     case "tool-todo_write":
       return <TodoToolHandler message={message} part={part} status={status} />;
+
+    case "tool-ask_user":
+      return <AskUserHandler input={part.input} output={part.output} state={part.state} />;
 
     case "tool-create_note":
       return (
