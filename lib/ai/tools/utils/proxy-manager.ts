@@ -404,7 +404,7 @@ async function doEnsureCaido(
   }
   if (lastLine === "timeout") {
     throw new Error(
-      `Caido did not become ready in 30 s. Check ${CAIDO_LOG} for errors.`,
+      `Caido did not become ready in 60 s. Check ${CAIDO_LOG} for errors.`,
     );
   }
   if (lastLine === "auth_failed") {
@@ -433,20 +433,20 @@ async function doEnsureCaido(
     const pollStart = performance.now();
     const waitResult = await sandbox.commands.run(
       [
-        `for i in $(seq 1 15); do`,
+        `for i in $(seq 1 30); do`,
         `  STATUS=$(${healthCheck})`,
         `  ([ "$STATUS" = "200" ] || [ "$STATUS" = "400" ]) && echo "ready" && exit 0`,
         `  sleep 2`,
         `done`,
         `echo "timeout"`,
       ].join("\n"),
-      { ...options, timeoutMs: 35000 },
+      { ...options, timeoutMs: 65000 },
     );
     tracker.health_poll_ms = Math.round(performance.now() - pollStart);
 
     if (!waitResult.stdout.includes("ready")) {
       throw new Error(
-        `Caido did not become ready in 30 s. Check ${CAIDO_LOG} for errors.`,
+        `Caido did not become ready in 60 s. Check ${CAIDO_LOG} for errors.`,
       );
     }
 

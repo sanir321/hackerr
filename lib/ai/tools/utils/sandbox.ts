@@ -5,9 +5,12 @@ import { NotFoundError, getUserFacingE2BErrorMessage } from "./e2b-errors";
 type SandboxReadyPath = SandboxBootInfo["path"];
 
 const SANDBOX_TEMPLATE = process.env.E2B_TEMPLATE || "terminal-agent-sandbox";
-// Must fit within Vercel's 300s budget — 60s resume leaves room for tool calls.
-const BASH_SANDBOX_RESUME_TIMEOUT = 60 * 1000;
-const BASH_SANDBOX_AUTOPAUSE_TIMEOUT = 5 * 60 * 1000; // 5 minutes auto-pause inactivity timeout
+// Creation timeout: fail fast if E2B is slow. Must stay well under Vercel's 300s limit.
+const BASH_SANDBOX_CREATE_TIMEOUT = 90 * 1000; // 90s max for sandbox creation
+// Inactivity auto-pause: pause sandbox after 5 minutes of no commands
+const BASH_SANDBOX_AUTOPAUSE_MS = 5 * 60 * 1000;
+// Resume timeout for reconnecting to a paused sandbox
+const BASH_SANDBOX_RESUME_TIMEOUT = 30 * 1000;
 // Retry config for E2B 429 rate limits
 const RATE_LIMIT_COOLDOWN_MS = 1_000;
 const MAX_CREATE_RETRIES = 3;
@@ -150,8 +153,8 @@ export const ensureSandboxConnection = async (
 
       try {
         const sandbox = await Sandbox.create(SANDBOX_TEMPLATE, {
-          timeoutMs: BASH_SANDBOX_AUTOPAUSE_TIMEOUT,
-          lifecycle: { onTimeout: "pause" },
+          timeoutMs: BASH_SANDBOX_CREATE_TIMEOUT,
+          lifecycle: { onTimeout: "pause", autoPause: BASH_SANDBOX_AUTOPAUSE_MS },
           secure: true,
           metadata: {
             userID,
