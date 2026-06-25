@@ -879,25 +879,6 @@ export async function applyPrepareStepReminders(
 }
 
 /**
- * Free-tier agent mode is restricted to the local sandbox + auto model.
- * Throws ChatSDKError("forbidden:chat") if either gate fails.
- */
-export function assertFreeAgentGates(args: {
-  mode: ChatMode;
-  subscription: SubscriptionTier;
-  sandboxPreference: SandboxPreference | undefined;
-  rawSelectedModel: string | undefined;
-}): void {
-  const { mode, subscription } = args;
-  if (!isAgentMode(mode) || subscription !== "free") return;
-
-  throw new ChatSDKError(
-    "forbidden:chat",
-    "Agent mode requires a Pro or Ultra subscription. Upgrade to use agent mode.",
-  );
-}
-
-/**
  * Build the extra-usage config for paid users with `extra_usage_enabled`.
  * Falls back to an optimistic config if the balance lookup fails so a
  * transient Convex error doesn't silently disable extra usage and force

@@ -86,24 +86,10 @@ export async function getExtraUsageBalance(
  * @param userId - User ID
  * @param pointsUsed - Number of points to deduct
  */
-export interface RefundBalanceResult {
-  success: boolean;
-  newBalanceDollars: number;
-  /** True if no refund was performed (e.g., pointsToRefund <= 0) */
-  noOp?: boolean;
-}
-
-/**
- * Refund points to user's prepaid balance (for failed requests).
- * This is the reverse of deductFromBalance.
- *
- * @param userId - User ID
- * @param pointsToRefund - Number of points to refund
- */
 export async function refundToBalance(
   userId: string,
   pointsToRefund: number,
-): Promise<RefundBalanceResult> {
+): Promise<{ success: boolean; newBalanceDollars: number; noOp?: boolean }> {
   // No-op: nothing to refund, balance unchanged (actual balance not fetched to avoid extra call)
   if (pointsToRefund <= 0) {
     return {
@@ -287,7 +273,7 @@ export async function refundToTeamBalance(
   organizationId: string,
   userId: string,
   pointsToRefund: number,
-): Promise<RefundBalanceResult> {
+): Promise<{ success: boolean; newBalanceDollars: number; noOp?: boolean }> {
   if (pointsToRefund <= 0) {
     return {
       success: true,

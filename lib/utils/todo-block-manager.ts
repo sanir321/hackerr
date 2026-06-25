@@ -2,21 +2,9 @@
 
 import { useState, useCallback } from "react";
 
-interface TodoBlockState {
-  autoId: string | null;
-  manualIds: string[];
-}
-
-interface TodoBlockManager {
-  messageTodoOpen: Record<string, TodoBlockState>;
-  autoOpenTodoBlock: (messageId: string, blockId: string) => void;
-  toggleTodoBlock: (messageId: string, blockId: string) => void;
-  isBlockExpanded: (messageId: string, blockId: string) => boolean;
-}
-
-export const useTodoBlockManager = (): TodoBlockManager => {
+export const useTodoBlockManager = () => {
   const [messageTodoOpen, setMessageTodoOpen] = useState<
-    Record<string, TodoBlockState>
+    Record<string, { autoId: string | null; manualIds: string[] }>
   >({});
 
   const autoOpenTodoBlock = useCallback(

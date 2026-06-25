@@ -27,29 +27,6 @@ export interface SandboxFallbackInfo {
  */
 const MAX_SANDBOX_HEALTH_FAILURES = 5;
 
-const logStructured = (
-  level: "warn" | "error",
-  event: string,
-  fields: Record<string, unknown>,
-) => {
-  const payload = {
-    timestamp: new Date().toISOString(),
-    level,
-    event,
-    service: "chat-handler",
-    environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "unknown",
-    request_id: process.env.VERCEL_REQUEST_ID ?? null,
-    ...fields,
-  };
-
-  const message = JSON.stringify(payload);
-  if (level === "error") {
-    console.error(message);
-  } else {
-    console.warn(message);
-  }
-};
-
 export class HybridSandboxManager implements SandboxManager {
   private sandbox: SandboxInstance | null = null;
   private pendingFallbackInfo: SandboxFallbackInfo | null = null;

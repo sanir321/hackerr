@@ -391,7 +391,7 @@ export async function createAgentStream(
     },
 
     stopWhen: [
-      stepCountIs(getMaxStepsForUser(ctx.mode, ctx.subscription)),
+      stepCountIs(getMaxStepsForUser(ctx.mode)),
       tokenExhaustedAfterSummarization({
         threshold: Math.floor(
           getMaxTokensForSubscription(ctx.subscription, { mode: ctx.mode }) *

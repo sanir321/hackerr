@@ -53,7 +53,6 @@ import {
   SummarizationTracker,
   appendSystemReminderToLastUserMessage,
   injectNotesIntoMessages,
-  assertFreeAgentGates,
   buildExtraUsageConfig,
   estimatePreflightInputTokens,
   getRetryFallbackModel,
@@ -193,13 +192,6 @@ export const createChatHandler = () => {
         id: userId,
         subscription,
         region: userLocation?.region,
-      });
-
-      assertFreeAgentGates({
-        mode,
-        subscription,
-        sandboxPreference,
-        rawSelectedModel,
       });
 
       // Pre-emptive abort fires before Vercel's hard request timeout so we

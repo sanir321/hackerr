@@ -90,12 +90,7 @@ export const ChatInput = ({
 
   const draftId = isNewChat ? "new" : chatId || NULL_THREAD_DRAFT_ID;
 
-  // Fallback to 'ask' mode when temporary chats are enabled (agent modes not allowed)
-  useEffect(() => {
-    if (temporaryChatsEnabled && isAgentMode(chatMode)) {
-      setChatMode("ask");
-    }
-  }, [temporaryChatsEnabled, chatMode, setChatMode]);
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

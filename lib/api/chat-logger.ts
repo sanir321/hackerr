@@ -32,42 +32,6 @@ export interface ChatLoggerConfig {
   endpoint: "/api/chat";
 }
 
-export interface RequestDetails {
-  mode: ChatMode;
-  isTemporary: boolean;
-  isRegenerate: boolean;
-}
-
-export interface UserContext {
-  id: string;
-  subscription: string;
-  region?: string;
-}
-
-export interface ChatContext {
-  messageCount: number;
-  estimatedInputTokens: number;
-  isNewChat: boolean;
-  fileCount?: number;
-  imageCount?: number;
-  memoryEnabled: boolean;
-}
-
-export interface RateLimitContext {
-  pointsDeducted?: number;
-  extraUsagePointsDeducted?: number;
-  monthly?: { remaining: number; limit: number };
-  remaining?: number;
-  subscription: string;
-}
-
-export interface StreamResult {
-  finishReason?: string;
-  wasAborted: boolean;
-  wasPreemptiveTimeout: boolean;
-  hadSummarization: boolean;
-}
-
 const truncateLogString = (value: string, maxLength = 500): string =>
   value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
 
@@ -163,33 +127,24 @@ export function createChatLogger(config: ChatLoggerConfig) {
     /**
      * Set initial request details
      */
-    setRequestDetails(details: RequestDetails) {
+    setRequestDetails(details: { mode: ChatMode; isTemporary: boolean; isRegenerate: boolean }) {
       mode = details.mode;
       builder.setRequestDetails(details);
     },
 
-    /**
-     * Set user context
-     */
-    setUser(user: UserContext) {
+    setUser(user: { id: string; subscription: string; region?: string }) {
       userId = user.id;
       subscription = user.subscription;
       builder.setUser(user);
     },
 
-    /**
-     * Set chat context and model
-     */
-    setChat(chat: ChatContext, model: string) {
+    setChat(chat: { messageCount: number; estimatedInputTokens: number; isNewChat: boolean; fileCount?: number; imageCount?: number; memoryEnabled: boolean }, model: string) {
       builder.setChat(chat);
       builder.setModel(model);
     },
 
-    /**
-     * Set rate limit and extra usage context
-     */
     setRateLimit(
-      context: RateLimitContext,
+      context: { pointsDeducted?: number; extraUsagePointsDeducted?: number; monthly?: { remaining: number; limit: number }; remaining?: number; subscription: string },
       extraUsageConfig?: ExtraUsageConfig,
     ) {
       monthlyRemainingPercent = context.monthly
@@ -363,7 +318,7 @@ export function createChatLogger(config: ChatLoggerConfig) {
     /**
      * Finalize and emit success event
      */
-    emitSuccess(result: StreamResult) {
+    emitSuccess(result: { finishReason?: string; wasAborted: boolean; wasPreemptiveTimeout: boolean; hadSummarization: boolean }) {
       builder.setStreamResult(result);
       if (result.wasAborted) {
         builder.setAborted();
@@ -451,20 +406,3 @@ export function createChatLogger(config: ChatLoggerConfig) {
 }
 
 export type ChatLogger = ReturnType<typeof createChatLogger>;
-
-/**
- * Capture aggregated tool usage to PostHog at end of request.
- * One event is emitted per tool to keep analytics useful while
- * avoiding the cost of one PostHog event per individual tool call.
- */
-export function captureToolCalls() {
-}
-
-export function captureAgentCompletionAnalytics() {
-}
-
-export function captureUsageCost() {
-}
-
-export function shutdownPostHog() {
-}

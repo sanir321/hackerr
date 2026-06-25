@@ -24,7 +24,6 @@ import {
  */
 export const getMaxStepsForUser = (
   mode: ChatMode,
-  _subscription: SubscriptionTier,
 ): number => {
   return 100;
 };
