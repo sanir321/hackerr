@@ -176,23 +176,31 @@ const kiloGateway = createOpenAI({
 
 const buildProviderMap = (gateway: ReturnType<typeof createOpenAI>) => {
   // Verified working free models on Kilo Gateway (June 2026)
-  // Tool support: nemotron-super ✅, owl-alpha ❌, nex-n2-pro ❌, all reasoning models ❌
+  // Tool-capable: nemotron-super ✅, owl-alpha ✅, stepfun-flash ✅,
+  //               laguna-xs ✅, north-mini-code ✅, openrouter/free ✅
   const nemotronSuper = gateway("nvidia/nemotron-3-super-120b-a12b:free");
   const owlAlpha = gateway("openrouter/owl-alpha");
-  const nexN2Pro = gateway("nex-agi/nex-n2-pro:free");
+  const stepfunFlash = gateway("stepfun/step-3.7-flash:free");
+  const lagunaXs = gateway("poolside/laguna-xs.2:free");
+  const northMiniCode = gateway("cohere/north-mini-code:free");
+  const openRouterFree = gateway("openrouter/free");
 
   return {
     "ask-model": owlAlpha,
     "ask-model-free": owlAlpha,
-    // Agent mode: only nemotron-super supports tool calling reliably
+    // Agent mode: all below support tool calling
     "agent-model": nemotronSuper,
     "agent-model-free": nemotronSuper,
     "model-standard": owlAlpha,
-    "model-pro": nexN2Pro,
+    "model-pro": openRouterFree,
     "model-owl-alpha": owlAlpha,
     "model-reasoning": nemotronSuper,
+    "model-stepfun": stepfunFlash,
+    "model-laguna-xs": lagunaXs,
+    "model-north-mini-code": northMiniCode,
+    "model-openrouter-free": openRouterFree,
     // Fallbacks: different providers to avoid same-provider failures
-    "fallback-agent-model": owlAlpha,
+    "fallback-agent-model": stepfunFlash,
     "fallback-ask-model": nemotronSuper,
     "title-generator-model": owlAlpha,
   } as Record<string, any>;
@@ -212,6 +220,10 @@ export const modelCutoffDates: Record<ModelName, string> &
   "model-pro": "2025",
   "model-owl-alpha": "2025",
   "model-reasoning": "2025",
+  "model-stepfun": "2025",
+  "model-laguna-xs": "2025",
+  "model-north-mini-code": "2025",
+  "model-openrouter-free": "2025",
   "fallback-agent-model": "2025",
   "fallback-ask-model": "2025",
   "title-generator-model": "2025",
@@ -224,10 +236,14 @@ export const modelDisplayNames: Record<ModelName, string> &
   "agent-model": "NVIDIA Nemotron 3 Super (free, tool-calling)",
   "agent-model-free": "NVIDIA Nemotron 3 Super (free, tool-calling)",
   "model-standard": "Owl Alpha — fast, 1M context",
-  "model-pro": "Nex N2 Pro — capable general model",
+  "model-pro": "OpenRouter Free (auto-routed)",
   "model-owl-alpha": "Owl Alpha — fast, 1M context",
   "model-reasoning": "NVIDIA Nemotron 3 Super (free, reasoning)",
-  "fallback-agent-model": "Owl Alpha — fast, 1M context",
+  "model-stepfun": "StepFun Step 3.7 Flash (free)",
+  "model-laguna-xs": "Poolside Laguna XS.2 (free)",
+  "model-north-mini-code": "Cohere North Mini Code (free)",
+  "model-openrouter-free": "OpenRouter Free Pool",
+  "fallback-agent-model": "StepFun Step 3.7 Flash (free fallback)",
   "fallback-ask-model": "NVIDIA Nemotron 3 Super (free)",
   "title-generator-model": "Owl Alpha",
 };
@@ -292,6 +308,14 @@ export function resolveTierToProviderKey(
       return "model-owl-alpha";
     case "umbraa-reason":
       return "model-reasoning";
+    case "umbraa-flash":
+      return "model-stepfun";
+    case "umbraa-laguna":
+      return "model-laguna-xs";
+    case "umbraa-code":
+      return "model-north-mini-code";
+    case "umbraa-openrouter":
+      return "model-openrouter-free";
     default:
       return "model-standard";
   }

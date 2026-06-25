@@ -13,6 +13,24 @@ export interface ModelOption {
 
 export const ASK_MODEL_OPTIONS: ModelOption[] = [
   {
+    id: "umbraa-flash",
+    label: "StepFun Step 3.7 Flash",
+    description: "Fast free model, 262K context",
+    poweredBy: "StepFun",
+  },
+  {
+    id: "umbraa-laguna",
+    label: "Poolside Laguna XS.2",
+    description: "Small, fast, 262K context",
+    poweredBy: "Poolside",
+  },
+  {
+    id: "umbraa-openrouter",
+    label: "OpenRouter Free",
+    description: "Auto-routed free model pool",
+    poweredBy: "OpenRouter",
+  },
+  {
     id: "umbraa-owl",
     label: "Owl Alpha",
     description: "Fast, 1M context window for long documents",
@@ -25,21 +43,42 @@ export const ASK_MODEL_OPTIONS: ModelOption[] = [
     poweredBy: "OpenRouter",
   },
   {
-    id: "umbraa-pro",
-    label: "Nex N2 Pro",
-    description: "Capable general-purpose model",
-    poweredBy: "Novita AI",
-  },
-  {
-    id: "umbraa-reason",
-    label: "Nemotron 3 Super (Reasoning)",
-    description: "Built-in reasoning for complex problems",
-    poweredBy: "NVIDIA",
-    thinking: true,
+    id: "umbraa-code",
+    label: "Cohere North Mini Code",
+    description: "Code-focused free model",
+    poweredBy: "Cohere",
   },
 ];
 
 export const AGENT_MODEL_OPTIONS: ModelOption[] = [
+  {
+    id: "umbraa-flash",
+    label: "StepFun Step 3.7 Flash",
+    description: "Fast tool-calling agent, 262K context",
+    poweredBy: "StepFun",
+    thinking: true,
+  },
+  {
+    id: "umbraa-laguna",
+    label: "Poolside Laguna XS.2",
+    description: "Lightweight agent, 262K context",
+    poweredBy: "Poolside",
+    thinking: true,
+  },
+  {
+    id: "umbraa-code",
+    label: "Cohere North Mini Code",
+    description: "Code-focused agent, 256K context",
+    poweredBy: "Cohere",
+    thinking: true,
+  },
+  {
+    id: "umbraa-openrouter",
+    label: "OpenRouter Free",
+    description: "Auto-routed free model pool for agent tasks",
+    poweredBy: "OpenRouter",
+    thinking: true,
+  },
   {
     id: "umbraa-reason",
     label: "Nemotron 3 Super",
@@ -59,13 +98,6 @@ export const AGENT_MODEL_OPTIONS: ModelOption[] = [
     label: "Owl Alpha (Standard)",
     description: "Reliable agent for general tasks",
     poweredBy: "OpenRouter",
-    thinking: true,
-  },
-  {
-    id: "umbraa-pro",
-    label: "Nex N2 Pro (Agent)",
-    description: "Capable agent for complex tasks",
-    poweredBy: "Novita AI",
     thinking: true,
   },
 ];

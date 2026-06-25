@@ -16,7 +16,11 @@ export type SelectedModel =
   | "umbraa-standard"
   | "umbraa-pro"
   | "umbraa-owl"
-  | "umbraa-reason";
+  | "umbraa-reason"
+  | "umbraa-flash"
+  | "umbraa-laguna"
+  | "umbraa-code"
+  | "umbraa-openrouter";
 
 export const SELECTABLE_MODELS: readonly SelectedModel[] = [
   "auto",
@@ -24,6 +28,10 @@ export const SELECTABLE_MODELS: readonly SelectedModel[] = [
   "umbraa-pro",
   "umbraa-owl",
   "umbraa-reason",
+  "umbraa-flash",
+  "umbraa-laguna",
+  "umbraa-code",
+  "umbraa-openrouter",
 ];
 
 /**
